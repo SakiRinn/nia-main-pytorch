@@ -46,4 +46,4 @@ def anonymize(username, origin, destination, targets, middleboxes, qos, start, e
     entities += 'allow @traffic ' if allow is not None else ''
     entities += 'block @traffic ' if block is not None else ''
 
-    return trim(entities)
+    return entities.strip()

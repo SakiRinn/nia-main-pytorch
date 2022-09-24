@@ -4,19 +4,13 @@ import numpy as np
 
 import config
 import datasets.encoding as encoding
+from . import tools
+
 from keras.layers import (Activation, Dense, Embedding, RepeatVector,
                           TimeDistributed, recurrent)
 from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from keras.preprocessing.sequence import pad_sequences
-
-
-def find_checkpoint_file(path):
-    checkpoint_file = [path + f for f in os.listdir(path) if 'weights' in f]
-    if len(checkpoint_file) == 0:
-        return []
-    modified_time = [os.path.getmtime(f) for f in checkpoint_file]
-    return checkpoint_file[np.argmax(modified_time)]
 
 
 class AttentionSeq2Seq:
@@ -63,7 +57,7 @@ class AttentionSeq2Seq:
     def train(self):
 
         # Load checkpoints if exists.
-        self.saved_weights = find_checkpoint_file(config.MODEL_DIR)
+        self.saved_weights = tools.find_checkpoint_file(config.MODEL_DIR)
         k_start = 1
         if len(self.saved_weights) != 0:
             print('[INFO] Saved weights found, loading...', self.saved_weights)
@@ -103,7 +97,7 @@ class AttentionSeq2Seq:
                 self.model.save_weights(config.MODEL_WEIGHTS_PATH.format(epoch))
 
     def test(self):
-        self.saved_weights = find_checkpoint_file()
+        self.saved_weights = tools.find_checkpoint_file()
         if len(self.saved_weights) != 0:
             print('[INFO] Saved weights found, loading...', self.saved_weights)
             epoch = self.saved_weights[self.saved_weights.rfind('_') + 1:self.saved_weights.rfind('.')]
@@ -136,7 +130,7 @@ class AttentionSeq2Seq:
 
     def predict(self, entities):
         sequence = ''
-        self.saved_weights = find_checkpoint_file()
+        self.saved_weights = tools.find_checkpoint_file()
         if len(self.saved_weights) != 0:
             print('[INFO] Saved weights found, loading...', self.saved_weights)
             epoch = self.saved_weights[self.saved_weights.rfind('_') + 1:self.saved_weights.rfind('.')]
