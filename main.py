@@ -9,8 +9,16 @@ import config
 from torch.nn.utils.rnn import pad_sequence
 
 
+def get_model(name):
+    return eval('modules.' + name)
+
+
 def train():
-    encoder = modules.Encoder(config.MODEL_EMBEDDING_DIM)
+    ...
+
+
+def test():
+    ...
 
 
 if __name__ == "__main__":

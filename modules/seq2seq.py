@@ -9,7 +9,6 @@ import datasets.encoding as encoding
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 def get_activation(act, dim=0):
@@ -100,22 +99,20 @@ class Decoder(nn.Module):
 
 
 class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder,
-                 training=False, output_word_to_index=None):
+    def __init__(self, input_size, embed_size, hidden_size, output_size,
+                 num_layers=1, training=False, output_word_to_index=None):
         super(Seq2Seq, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-
+        # Model
+        self.encoder = Encoder(input_size, embed_size, hidden_size, num_layers)
+        self.decoder = Decoder(input_size, embed_size, hidden_size, output_size, num_layers)
+        # Option
         self.training = training
         self.output_word_to_index = output_word_to_index
-
         if self.training:
             assert self.output_word_to_index is not None
-        assert encoder.hidden_size == decoder.hidden_size, \
-            "Hidden dimensions of encoder and decoder must be equal!"
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        # src, trg: (N, T, en_input), (T, max_len)
+        # src, trg: (N, T, input), (T, output)
         batch_size = src.size(0)
         max_len = trg.size(1)
         vocab_size = self.decoder.output_size
@@ -146,9 +143,7 @@ if __name__ == '__main__':
     iterator = iter(dl)
     sample = next(iterator)
     print(sample[0].device, sample[1].device)
-    encoder = Encoder(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM,
-                      config.MODEL_HIDDEN_DIM, config.MODEL_HIDDEN_LAYERS)
-    decoder = Decoder(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM,
-                      config.MODEL_HIDDEN_DIM, dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS)
-    seq2seq = Seq2Seq(encoder, decoder, True, dataset.output_word_to_index).cuda()
+    seq2seq = Seq2Seq(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM, config.MODEL_HIDDEN_DIM,
+                      dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS,
+                      True, dataset.output_word_to_index).cuda()
     print(seq2seq(sample[0], sample[1]))
