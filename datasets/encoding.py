@@ -1,14 +1,15 @@
 import numpy as np
 from nltk import FreqDist
-from numpy import argmax, array, hstack
+from numpy import hstack
 
 import config
+import torch
 
 
 # vectorize each word of each sentence as a binary array
 def vectorize(sentences, sentence_max_len, word_index):
     # Vectorizing each element in each sequence
-    sequences = np.zeros((len(sentences), sentence_max_len, len(word_index)))
+    sequences = torch.zeros(len(sentences), sentence_max_len, len(word_index))
     for i, sentence in enumerate(sentences):
         for j, word in enumerate(sentence):
             sequences[i, j, word] = 1.
@@ -18,13 +19,16 @@ def vectorize(sentences, sentence_max_len, word_index):
 # replace words in sentences with index values of it
 def index(sentences, word_index):
     # Converting each word to its index value
-    for i, sentence in enumerate(sentences):
+    outputs = []
+    for sentence in sentences:
+        output = torch.empty(len(sentence))
         for j, word in enumerate(sentence):
             if word in word_index:
-                sentences[i][j] = word_index[word]
+                output[j] = word_index[word]
             else:
-                sentences[i][j] = word_index['UNK']
-    return sentences
+                output[j] = word_index['UNK']
+        outputs.append(output)
+    return outputs
 
 
 def build_index(words):

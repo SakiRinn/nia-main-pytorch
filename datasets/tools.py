@@ -1,7 +1,51 @@
 from random import randint, sample
+import sys
 
 import config
-from keras.preprocessing.text import text_to_word_sequence
+
+
+def text_to_word_sequence(text,
+                          filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
+                          lower=True, split=" "):
+    """Converts a text to a sequence of words (or tokens).
+
+    # Arguments
+        text: Input text (string).
+        filters: list (or concatenation) of characters to filter out, such as
+            punctuation. Default: ``!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\\t\\n``,
+            includes basic punctuation, tabs, and newlines.
+        lower: boolean. Whether to convert the input to lowercase.
+        split: str. Separator for word splitting.
+
+    # Returns
+        A list of words (or tokens).
+    """
+    if sys.version_info < (3,):
+        maketrans = string.maketrans
+    else:
+        maketrans = str.maketrans
+    if lower:
+        text = text.lower()
+
+    if sys.version_info < (3,):
+        if isinstance(text, unicode):  # noqa: F821
+            translate_map = {
+                ord(c): unicode(split) for c in filters  # noqa: F821
+            }
+            text = text.translate(translate_map)
+        elif len(split) == 1:
+            translate_map = maketrans(filters, split * len(filters))
+            text = text.translate(translate_map)
+        else:
+            for c in filters:
+                text = text.replace(c, split)
+    else:
+        translate_dict = {c: split for c in filters}
+        translate_map = maketrans(translate_dict)
+        text = text.translate(translate_map)
+
+    seq = text.split(split)
+    return [i for i in seq if i]
 
 
 def get_intent(username, origin, destination, targets, middleboxes, qos, start, end, allow, block):
@@ -236,7 +280,3 @@ def anonymize(username, origin, destination, targets, middleboxes, qos, start, e
     entities += 'block @traffic ' if block is not None else ''
 
     return entities.strip()
-
-
-if __name__ == "__main__":
-    write_alt()
