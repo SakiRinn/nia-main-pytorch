@@ -98,7 +98,7 @@ class Decoder(nn.Module):
 
 
 class Seq2Seq(nn.Module):
-    def __init__(self, input_size, embed_size, hidden_size, output_size,
+    def __init__(self, input_size, output_size, embed_size, hidden_size,
                  num_layers=1, training=False):
         super(Seq2Seq, self).__init__()
         # Model
@@ -137,6 +137,7 @@ if __name__ == '__main__':
     iterator = iter(dl)
     sample = next(iterator)
     print(sample[0].device, sample[1].device)
-    seq2seq = Seq2Seq(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM, config.MODEL_HIDDEN_DIM,
-                      dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS, True)
+    seq2seq = Seq2Seq(dataset.input_vocab_len, dataset.output_vocab_len,
+                      config.MODEL_EMBEDDING_DIM, config.MODEL_HIDDEN_DIM,
+                      config.MODEL_HIDDEN_LAYERS, True)
     print(seq2seq(sample[0].cpu(), sample[1].cpu()))
