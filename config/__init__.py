@@ -32,7 +32,7 @@ MODEL_LOSS = 'categorical_crossentropy'
 
 MODEL_BATCH_SIZE = 64         # Batch size for training.
 MODEL_EPOCHS = 100            # Number of epochs to train for.
-MODEL_LATENT_DIM = 256        # Latent dimensionality of the encoding space.
+MODEL_EMBEDDING_DIM = 256
 MODEL_HIDDEN_DIM = 1000       # Dimensionality of hidden layer.
 MODEL_HIDDEN_LAYERS = 3       # Dimensionality of hidden layer.
 # Fraction of dataset used to validate model fitting.

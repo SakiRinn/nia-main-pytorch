@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 def train():
-    encoder = modules.Encoder(config.MODEL_LATENT_DIM)
+    encoder = modules.Encoder(config.MODEL_EMBEDDING_DIM)
 
 
 if __name__ == "__main__":

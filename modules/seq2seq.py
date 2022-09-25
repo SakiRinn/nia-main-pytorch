@@ -146,9 +146,9 @@ if __name__ == '__main__':
     iterator = iter(dl)
     sample = next(iterator)
     print(sample[0].device, sample[1].device)
-    encoder = Encoder(dataset.input_vocab_len, config.MODEL_LATENT_DIM,
+    encoder = Encoder(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM,
                       config.MODEL_HIDDEN_DIM, config.MODEL_HIDDEN_LAYERS)
-    decoder = Decoder(dataset.input_vocab_len, config.MODEL_LATENT_DIM,
+    decoder = Decoder(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM,
                       config.MODEL_HIDDEN_DIM, dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS)
     seq2seq = Seq2Seq(encoder, decoder, True, dataset.output_word_to_index).cuda()
     print(seq2seq(sample[0], sample[1]))
