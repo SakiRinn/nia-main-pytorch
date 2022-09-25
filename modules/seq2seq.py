@@ -2,10 +2,7 @@ import os
 import numpy as np
 import random
 
-import sys
-sys.path.insert(0, '.')
 import config
-import datasets.encoding as encoding
 
 import torch
 import torch.nn as nn
@@ -45,15 +42,15 @@ class BilinearAttention(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, embed_size, hidden_size, num_layers=1, dropout=0.5):
+    def __init__(self, input_vocab_size, embed_size, hidden_size, num_layers=1, dropout=0.5):
         super(Encoder, self).__init__()
         # Size
-        self.input_size = input_size
+        self.input_vocab_size = input_vocab_size
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         # Layer
-        self.embedding = nn.Embedding(input_size, embed_size)
+        self.embedding = nn.Embedding(input_vocab_size, embed_size)
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers,
                             batch_first=True, dropout=dropout, bidirectional=True)
 
@@ -67,24 +64,24 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_size, embed_size, hidden_size,
+    def __init__(self, output_vocab_size, embed_size, hidden_size,
                  num_layers=1, dropout=0.2, activation='Softmax'):
         super(Decoder, self).__init__()
         # Size
-        self.output_size = output_size
+        self.output_vocab_size = output_vocab_size
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         # Layer
         self.embedding = nn.Sequential(
-            nn.Embedding(output_size, embed_size),
+            nn.Embedding(output_vocab_size, embed_size),
             nn.Dropout(dropout)
         )
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers,
                             batch_first=True, dropout=dropout, bidirectional=False)
         self.attention = BilinearAttention(hidden_size)
         self.dense = nn.Sequential(
-            nn.Linear(hidden_size, output_size),
+            nn.Linear(hidden_size, output_vocab_size),
             get_activation(activation, dim=-1)
         )
 
@@ -98,12 +95,12 @@ class Decoder(nn.Module):
 
 
 class Seq2Seq(nn.Module):
-    def __init__(self, input_size, output_size, embed_size, hidden_size,
+    def __init__(self, input_vocab_size, output_vocab_size, embed_size, hidden_size,
                  num_layers=1, training=False):
         super(Seq2Seq, self).__init__()
         # Model
-        self.encoder = Encoder(input_size, embed_size, hidden_size, num_layers)
-        self.decoder = Decoder(output_size, embed_size, hidden_size, num_layers)
+        self.encoder = Encoder(input_vocab_size, embed_size, hidden_size, num_layers)
+        self.decoder = Decoder(output_vocab_size, embed_size, hidden_size, num_layers)
         # Option
         self.training = training
 
@@ -136,7 +133,6 @@ if __name__ == '__main__':
     dl = DataLoader(dataset, config.MODEL_BATCH_SIZE, shuffle=True)
     iterator = iter(dl)
     sample = next(iterator)
-    print(sample[0].device, sample[1].device)
     seq2seq = Seq2Seq(dataset.input_vocab_len, dataset.output_vocab_len,
                       config.MODEL_EMBEDDING_DIM, config.MODEL_HIDDEN_DIM,
                       config.MODEL_HIDDEN_LAYERS, True)
