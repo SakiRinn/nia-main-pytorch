@@ -7,8 +7,9 @@ import torch
 
 
 # vectorize each word of each sentence as a binary array
-def vectorize(sentences, sentence_max_len, word_index):
+def vectorize(sentences, word_index):
     # Vectorizing each element in each sequence
+    sentence_max_len = max([len(sentence) for sentence in sentences])
     sequences = torch.zeros(len(sentences), sentence_max_len, len(word_index))
     for i, sentence in enumerate(sentences):
         for j, word in enumerate(sentence):
