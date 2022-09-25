@@ -23,10 +23,9 @@ class ResDataset(Dataset):
 
         self.input_words = pad_sequence(self.input_words).T.to(torch.long).cuda()
         self.output_words = pad_sequence(self.output_words).T.to(torch.long).cuda()
-        self.output_sequence = encoding.vectorize(self.output_words, self.output_word_to_index).to(dtype=torch.long).cuda()
 
     def __len__(self):
         return min(len(self.input_words), len(self.output_words))
 
     def __getitem__(self, idx: int):
-        return self.input_words[idx], self.output_sequence[idx]
+        return self.input_words[idx], self.output_words[idx]

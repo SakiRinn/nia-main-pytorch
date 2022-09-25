@@ -58,7 +58,7 @@ class Encoder(nn.Module):
                             batch_first=True, dropout=dropout, bidirectional=True)
 
     def forward(self, inputs, state=None):
-        # inputs: (N, T, input)
+        # inputs: (N, T_input)
         embedded = self.embedding(inputs)    # (N, T, embed)
         outputs, state = self.lstm(embedded, state)    # (N, T, 2*hidden), (2*layer, N, hidden)
         # Avg bidirectional outputs -> (N, T, hidden)
@@ -67,18 +67,17 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, input_size, embed_size, hidden_size, output_size,
+    def __init__(self, output_size, embed_size, hidden_size,
                  num_layers=1, dropout=0.2, activation='Softmax'):
         super(Decoder, self).__init__()
         # Size
-        self.input_size = input_size
+        self.output_size = output_size
         self.embed_size = embed_size
         self.hidden_size = hidden_size
-        self.output_size = output_size
         self.num_layers = num_layers
         # Layer
         self.embedding = nn.Sequential(
-            nn.Embedding(input_size, embed_size),
+            nn.Embedding(output_size, embed_size),
             nn.Dropout(dropout)
         )
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers,
@@ -89,9 +88,9 @@ class Decoder(nn.Module):
             get_activation(activation, dim=-1)
         )
 
-    def forward(self, encoder_outputs, input, state=None):
-        # encoder_outputs, input: (N, T, hidden), (N, 1, input)
-        embedded = self.embedding(input)    # (N, 1, embed)
+    def forward(self, encoder_outputs, output, state=None):
+        # encoder_outputs, input: (N, T, hidden), (N, T_output)
+        embedded = self.embedding(output)    # (N, 1, embed)
         output, state = self.lstm(embedded, state)    # (N, 1, hidden)
         output = self.attention(output[:, -1, :].unsqueeze(1), encoder_outputs)    # (N, 1, hidden)
         output = self.dense(output)    # (N, 1, output)
@@ -100,38 +99,33 @@ class Decoder(nn.Module):
 
 class Seq2Seq(nn.Module):
     def __init__(self, input_size, embed_size, hidden_size, output_size,
-                 num_layers=1, training=False, output_word_to_index=None):
+                 num_layers=1, training=False):
         super(Seq2Seq, self).__init__()
         # Model
         self.encoder = Encoder(input_size, embed_size, hidden_size, num_layers)
-        self.decoder = Decoder(input_size, embed_size, hidden_size, output_size, num_layers)
+        self.decoder = Decoder(output_size, embed_size, hidden_size, num_layers)
         # Option
         self.training = training
-        self.output_word_to_index = output_word_to_index
-        if self.training:
-            assert self.output_word_to_index is not None
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        # src, trg: (N, T, input), (T, output)
+        # src, trg: (N, T_input), (N, T_output)
         batch_size = src.size(0)
         max_len = trg.size(1)
-        vocab_size = self.decoder.output_size
-        outputs = torch.zeros(max_len, batch_size, vocab_size).cuda()
+        preds = torch.zeros(batch_size, max_len).cuda()
 
         encoder_outputs, state = self.encoder(src)
         state = tuple([s[:self.decoder.num_layers] for s in state])
-        output = trg[:, 0, :]
+        output = trg[:, 0].unsqueeze(1)
         for t in range(1, max_len):
             output, state = self.decoder(encoder_outputs, output, state)
-            outputs[t] = output
-            pred = encoding.vectorize(output.argmax(1).unsqueeze(1), self.output_word_to_index)
-            pred = pred.squeeze().to(torch.long).cuda()
+            pred = output.argmax(1).to(torch.long)
+            preds[:, t] = pred
             if self.training:
                 is_teacher = random.random() < teacher_forcing_ratio
-                output = (trg[:, t, :] if is_teacher else pred)
+                output = trg[:, t].unsqueeze(1) if is_teacher else pred.unsqueeze(1)
             else:
-                output = pred
-        return outputs
+                output = pred.unsqueeze(1)
+        return preds
 
 
 if __name__ == '__main__':
@@ -144,6 +138,5 @@ if __name__ == '__main__':
     sample = next(iterator)
     print(sample[0].device, sample[1].device)
     seq2seq = Seq2Seq(dataset.input_vocab_len, config.MODEL_EMBEDDING_DIM, config.MODEL_HIDDEN_DIM,
-                      dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS,
-                      True, dataset.output_word_to_index).cuda()
-    print(seq2seq(sample[0], sample[1]))
+                      dataset.output_vocab_len, config.MODEL_HIDDEN_LAYERS, True)
+    print(seq2seq(sample[0].cpu(), sample[1].cpu()))
