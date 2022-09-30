@@ -2,8 +2,12 @@ import numpy as np
 from nltk import FreqDist
 from numpy import hstack
 
-import config
+import yaml
 import torch
+
+config = None
+with open('config/dataset.yaml', 'r') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
 
 # vectorize each word of each sentence as a binary array
@@ -35,7 +39,7 @@ def index(sentences, word_index):
 def build_index(words):
     # Creating the vocabulary set with the most common words
     dist = FreqDist(hstack(words))
-    vocab = dist.most_common(config.DATASET_VOCAB_SIZE - 1)
+    vocab = dist.most_common(config['vocab_size'] - 1)
 
     word_index = [word[0] for word in vocab]  # Creating an array of words from the vocabulary set, we will use this array as index-to-word dictionary
     word_index.insert(0, 'ZERO')  # Adding the word "ZERO" to the beginning of the array

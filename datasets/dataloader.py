@@ -7,8 +7,9 @@ from torch.utils.data import Dataset
 
 
 class ResDataset(Dataset):
-    def __init__(self):
+    def __init__(self, device='cuda'):
         super(ResDataset, self).__init__()
+        self.device = device
 
         input_words, output_words = datasets.read()
 
@@ -21,8 +22,8 @@ class ResDataset(Dataset):
         self.input_max_len = max([len(sentence) for sentence in self.input_words])
         self.output_max_len = max([len(sentence) for sentence in self.output_words])
 
-        self.input_words = pad_sequence(self.input_words).T.to(torch.long).cuda()
-        self.output_words = pad_sequence(self.output_words).T.to(torch.long).cuda()
+        self.input_words = pad_sequence(self.input_words).T.to(self.device, torch.long)
+        self.output_words = pad_sequence(self.output_words).T.to(self.device, torch.long)
 
     def __len__(self):
         return min(len(self.input_words), len(self.output_words))
