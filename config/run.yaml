@@ -2,6 +2,7 @@ train:
   batch_size: 64
   epochs: 100
   optimizer: RMSprop
+  teacher_forcing_ratio: 0.5
 test:
   input_file: './res/test_input.txt'
   result_file: './res/test_result.txt'

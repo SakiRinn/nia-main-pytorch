@@ -1,25 +1,8 @@
-import os
-import numpy as np
+from modules.tools import get_activation
 import random
-import yaml
 
 import torch
 import torch.nn as nn
-
-
-def get_activation(act, dim=0):
-    try:
-        return eval('nn.' + act)(dim=dim)
-    except TypeError:
-        return eval('nn.' + act)()
-
-
-def find_checkpoint_file(path):
-    checkpoint_file = [path + f for f in os.listdir(path) if 'weights' in f]
-    if len(checkpoint_file) == 0:
-        return []
-    modified_time = [os.path.getmtime(f) for f in checkpoint_file]
-    return checkpoint_file[np.argmax(modified_time)]
 
 
 class BilinearAttention(nn.Module):
@@ -53,9 +36,9 @@ class Encoder(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers,
                             batch_first=True, dropout=dropout, bidirectional=True)
 
-    def forward(self, inputs, state=None):
-        # inputs: (N, T)
-        embedded = self.embedding(inputs)    # (N, T, embed)
+    def forward(self, x, state=None):
+        # x: (N, T)
+        embedded = self.embedding(x)    # (N, T, embed)
         outputs, state = self.lstm(embedded, state)    # (N, T, 2*hidden), (2*layer, N, hidden)
         # Avg bidirectional outputs -> (N, T, hidden)
         outputs = (outputs[:, :, :self.hidden_dim] + outputs[:, :, self.hidden_dim:]) / 2
@@ -84,19 +67,18 @@ class Decoder(nn.Module):
             get_activation(activation, dim=-1)
         )
 
-    def forward(self, encoder_outputs, output, state=None):
-        # encoder_outputs, input: (N, T, hidden), (N, T)
-        embedded = self.embedding(output)    # (N, 1, embed)
-        output, state = self.lstm(embedded, state)    # (N, 1, hidden)
-        output = self.attention(output[:, -1, :].unsqueeze(1), encoder_outputs)    # (N, 1, hidden)
-        output = self.dense(output)    # (N, 1, output)
-        return output, state
+    def forward(self, encoder_outputs, x, state=None):
+        # encoder_outputs, x: (N, T, hidden), (N, T)
+        embedded = self.embedding(x)    # (N, 1, embed)
+        out, state = self.lstm(embedded, state)    # (N, 1, hidden)
+        out = self.attention(out[:, -1, :].unsqueeze(1), encoder_outputs)    # (N, 1, hidden)
+        out = self.dense(out)    # (N, 1, output)
+        return out, state
 
 
 class Seq2Seq(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, hidden_dim,
-                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2,
-                 activation='Softmax', training=False):
+                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2, activation='Softmax', training=False):
         super(Seq2Seq, self).__init__()
         # Model
         self.encoder = Encoder(input_vocab_len, embedding_dim, hidden_dim, num_layers, encoder_dropout)
@@ -105,7 +87,7 @@ class Seq2Seq(nn.Module):
         self.training = training
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        # src, trg: (N, T), (N, T_max)
+        # src, trg: (N, T), train (N, T_max) / eval (N, 1)
         batch_dim = src.size(0)
         max_len = trg.size(1)
         preds = torch.zeros(batch_dim, max_len).to(src.device)
@@ -126,6 +108,7 @@ class Seq2Seq(nn.Module):
 
 
 if __name__ == '__main__':
+    import yaml
     def load_yaml(path: str):
         output = None
         with open(path, 'r') as f:
