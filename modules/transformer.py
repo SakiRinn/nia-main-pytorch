@@ -1,6 +1,4 @@
-import sys
-sys.path.append('.')
-from modules.tools import get_activation
+from utils.parsing import get_activation
 
 import torch
 import torch.nn as nn
@@ -44,7 +42,7 @@ class EncoderLayer(nn.Module):
         self.mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation, dim=-1),
+            get_activation(activation),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -73,7 +71,7 @@ class DecoderLayer(nn.Module):
 
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation, dim=-1),
+            get_activation(activation),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -165,13 +163,21 @@ class Transformer(nn.Module):
                                num_layers, num_heads, encoder_dropout, activation)
         self.decoder = Decoder(output_vocab_len, embedding_dim, forward_dim,
                                num_layers, num_heads, decoder_dropout, activation)
-        self.final_layer = nn.Linear(embedding_dim, output_vocab_len)
+        self.dense = nn.Sequential(
+            nn.Linear(embedding_dim, output_vocab_len),
+            get_activation(activation)
+        )
 
     def forward(self, src, trg, mask=None):
         encoder_outputs = self.encoder(src)
         decoder_outputs, _, _ = self.decoder(encoder_outputs, trg, mask)
-        preds = self.final_layer(decoder_outputs)    # (N, T, embed)
-        return preds.argmax(2).to(torch.long)    # (N, T)
+        outs = self.dense(decoder_outputs)
+        return outs
+
+    def predict(self, src, trg, mask=None):
+        outs = self(src, trg, mask)    # (N, T, output)
+        preds = outs.argmax(-1).to(torch.long)    # (N, T)
+        return preds
 
 
 if __name__ == '__main__':

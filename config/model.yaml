@@ -6,11 +6,12 @@ seq2seq:
     encoder: 0.5
     decoder: 0.2
   activation: Softmax
+
 transformer:
-  embedding_dim: 96
-  forward_dim: 1000
+  embedding_dim: 512
+  forward_dim: 2048
   num_layers: 6
-  num_heads: 3
+  num_heads: 8
   dropout:
     encoder: 0.1
     decoder: 0.1

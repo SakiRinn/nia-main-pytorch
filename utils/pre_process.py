@@ -1,10 +1,8 @@
 from random import randint, sample
+from fileIO import load_config
 import sys
-import yaml
 
-config = None
-with open('config/dataset.yaml', 'r') as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+dataset_cfg = load_config('config/dataset.yaml')
 
 
 def text_to_word_sequence(text,
@@ -140,35 +138,35 @@ def get_entities(username, origin, destination, targets, middleboxes, qos, start
 
 
 def write():
-    with open(config['file'], 'wb') as file:
-        for i in range(config['size']):
+    with open(dataset_cfg['file'], 'wb') as file:
+        for i in range(dataset_cfg['size']):
             qos = []
-            sampled_metrics = sample(config['qos_metrics'], randint(0, 4))
+            sampled_metrics = sample(dataset_cfg['qos_metrics'], randint(0, 4))
             for metric in sampled_metrics:
-                sampled_constraint = sample(config['qos_constraints'], 1)[0]
+                sampled_constraint = sample(dataset_cfg['qos_constraints'], 1)[0]
                 while metric[0] is 'bandwidth' and sampled_constraint is 'none':
-                    sampled_constraint = sample(config['qos_constraints'], 1)[0]
+                    sampled_constraint = sample(dataset_cfg['qos_constraints'], 1)[0]
                 qos.append({'name': metric[0], 'constraint': sampled_constraint, 'value': str(randint(0, 100)) + metric[1]})
 
-            username = sample(config['usernames'], 1)[0]
-            origin = sample(config['locations'], 1)[0]
-            destination = sample(config['locations'], 1)[0]
+            username = sample(dataset_cfg['usernames'], 1)[0]
+            origin = sample(dataset_cfg['locations'], 1)[0]
+            destination = sample(dataset_cfg['locations'], 1)[0]
             while destination == origin:
-                destination = sample(config['locations'], 1)[0]
-            target = sample(config['targets'], 1)[0]
-            mbs = [mb for mb in sample(config['middle_boxes'], randint(0, len(config['middle_boxes'])))]
-            start = sample(config['hours'], 1)[0]
-            end = sample(config['hours'], 1)[0]
-            allow = sample(config['traffic'], 1)[0]
-            block = sample(config['traffic'], 1)[0]
+                destination = sample(dataset_cfg['locations'], 1)[0]
+            target = sample(dataset_cfg['targets'], 1)[0]
+            mbs = [mb for mb in sample(dataset_cfg['middle_boxes'], randint(0, len(dataset_cfg['middle_boxes'])))]
+            start = sample(dataset_cfg['hours'], 1)[0]
+            end = sample(dataset_cfg['hours'], 1)[0]
+            allow = sample(dataset_cfg['traffic'], 1)[0]
+            block = sample(dataset_cfg['traffic'], 1)[0]
             entities = get_entities(username, origin, destination, target, mbs, qos, start, end, allow, block)
             intent = get_intent(username, origin, destination, target, mbs, qos, start, end, allow, block)
             file.write(entities + ' > ' + intent + '\n')
 
 
 def write_alt():
-    with open(config['file'], 'wb') as file:
-        for i in range(config['size']):
+    with open(dataset_cfg['file'], 'wb') as file:
+        for i in range(dataset_cfg['size']):
             qos = []
             for metric in range(randint(0, 2)):
                 qos.append({'name': '@qos_metric', 'constraint': '@qos_constraint', 'value': '@qos_value'})
@@ -193,14 +191,14 @@ def read():
     input_words = []
     output_words = []
 
-    with open(config['file'], 'r') as f:
+    with open(dataset_cfg['file'], 'r') as f:
         lines = f.read().split('\n')
 
     for line in lines:
         if line and not line.startswith('#'):
             input_text, output_text = line.split('>')
-            input_words.append(text_to_word_sequence(input_text, filters=config['filters']))
-            output_words.append(text_to_word_sequence(output_text, filters=config['filters']))
+            input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+            output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
 
     return input_words, output_words
 
@@ -214,72 +212,21 @@ def read_split():
     test_input_words = []
     test_output_words = []
 
-    with open(config['file'], 'r') as f:
+    with open(dataset_cfg['file'], 'r') as f:
         lines = f.read().split('\n')
 
     fit_lines = sample(lines, int(len(lines) * 0.7))
     for line in fit_lines:
         if line and not line.startswith('#'):
             input_text, output_text = line.split('>')
-            fit_input_words.append(text_to_word_sequence(input_text, filters=config['filters']))
-            fit_output_words.append(text_to_word_sequence(output_text, filters=config['filters']))
+            fit_input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+            fit_output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
 
     test_lines = list(set(lines) - set(fit_lines))
     for line in test_lines:
         if line and not line.startswith('#'):
             input_text, output_text = line.split('>')
-            fit_input_words.append(text_to_word_sequence(input_text, filters=config['filters']))
-            fit_output_words.append(text_to_word_sequence(output_text, filters=config['filters']))
+            fit_input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+            fit_output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
 
     return fit_input_words, fit_output_words, test_input_words, test_output_words
-
-
-def deanonymize(intent, username, origin, destination, targets, middleboxes, qos, start, end, allow, block):
-    intent = intent.replace('@username', username)
-    intent = intent.replace('@location', origin, 1) if origin is not None else intent
-    intent = intent.replace('@location', destination, 1) if destination is not None else intent
-
-    for target in targets:
-        intent = intent.replace('@target', target, 1)
-
-    for mb in middleboxes:
-        intent += intent.replace('@middlebox', mb, 1)
-
-    for metric in qos:
-        intent = intent.replace('@qos_metric', metric['name'], 1)
-        intent = intent.replace('@qos_constraint', metric['constraint'], 1)
-        if metric['constraint'] is not 'none':
-            intent = intent.replace('@qos_value', metric['value'], 1)
-
-    intent = intent.replace('@hour', start) if start is not None else intent
-    intent = intent.replace('@hour', end) if end is not None else intent
-
-    intent = intent.replace('@traffic', end) if allow is not None else intent
-    intent = intent.replace('@traffic', end) if block is not None else intent
-
-    return intent
-
-
-def anonymize(username, origin, destination, targets, middleboxes, qos, start, end, allow, block):
-    entities = '@username '
-    entities += '@location ' if origin is not None else ''
-    entities += '@location ' if destination is not None else ''
-
-    for target in targets:
-        entities += '@target '
-
-    for mb in middleboxes:
-        entities += '@middlebox '
-
-    for metric in qos:
-        entities += '@qos_metric ' + '@qos_constraint '
-        if metric['constraint'] is not 'none':
-            entities += '@qos_value'
-
-    entities += '@hour ' if start is not None else ''
-    entities += '@hour ' if end is not None else ''
-
-    entities += 'allow @traffic ' if allow is not None else ''
-    entities += 'block @traffic ' if block is not None else ''
-
-    return entities.strip()

@@ -1,4 +1,4 @@
-from modules.tools import get_activation
+from utils.parsing import get_activation
 import random
 
 import torch
@@ -39,10 +39,10 @@ class Encoder(nn.Module):
     def forward(self, x, state=None):
         # x: (N, T)
         embedded = self.embedding(x)    # (N, T, embed)
-        outputs, state = self.lstm(embedded, state)    # (N, T, 2*hidden), (2*layer, N, hidden)
+        out, state = self.lstm(embedded, state)    # (N, T, 2*hidden), (2*layer, N, hidden)
         # Avg bidirectional outputs -> (N, T, hidden)
-        outputs = (outputs[:, :, :self.hidden_dim] + outputs[:, :, self.hidden_dim:]) / 2
-        return outputs, state
+        out = (out[:, :, :self.hidden_dim] + out[:, :, self.hidden_dim:]) / 2
+        return out, state
 
 
 class Decoder(nn.Module):
@@ -64,7 +64,7 @@ class Decoder(nn.Module):
         self.attention = BilinearAttention(hidden_dim)
         self.dense = nn.Sequential(
             nn.Linear(hidden_dim, output_vocab_len),
-            get_activation(activation, dim=-1)
+            get_activation(activation)
         )
 
     def forward(self, encoder_outputs, x, state=None):
@@ -72,14 +72,21 @@ class Decoder(nn.Module):
         embedded = self.embedding(x)    # (N, 1, embed)
         out, state = self.lstm(embedded, state)    # (N, 1, hidden)
         out = self.attention(out[:, -1, :].unsqueeze(1), encoder_outputs)    # (N, 1, hidden)
-        out = self.dense(out)    # (N, 1, output)
+        out = self.dense(out)    # (N, 1, embed)
         return out, state
 
 
 class Seq2Seq(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, hidden_dim,
-                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2, activation='Softmax', training=False):
+                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2,
+                 activation='Softmax', training=False):
         super(Seq2Seq, self).__init__()
+        # Size
+        self.input_vocab_len = input_vocab_len
+        self.output_vocab_len = output_vocab_len
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
         # Model
         self.encoder = Encoder(input_vocab_len, embedding_dim, hidden_dim, num_layers, encoder_dropout)
         self.decoder = Decoder(output_vocab_len, embedding_dim, hidden_dim, num_layers, decoder_dropout, activation)
@@ -90,20 +97,25 @@ class Seq2Seq(nn.Module):
         # src, trg: (N, T), train (N, T_max) / eval (N, 1)
         batch_dim = src.size(0)
         max_len = trg.size(1)
-        preds = torch.zeros(batch_dim, max_len).to(src.device)
+        outs = torch.zeros(batch_dim, max_len, self.output_vocab_len).to(src.device)
 
         encoder_outputs, state = self.encoder(src)
         state = tuple([s[:self.decoder.num_layers] for s in state])
-        output = trg[:, 0].unsqueeze(1)
+        out = trg[:, 0].unsqueeze(1)
         for t in range(1, max_len):
-            output, state = self.decoder(encoder_outputs, output, state)
-            pred = output.argmax(1).to(torch.long)
-            preds[:, t] = pred
+            out, state = self.decoder(encoder_outputs, out, state)
+            pred = out.argmax(1).to(torch.long)
+            outs[:, t, :] = out
             if self.training:
                 is_teacher = random.random() < teacher_forcing_ratio
-                output = trg[:, t].unsqueeze(1) if is_teacher else pred.unsqueeze(1)
+                out = trg[:, t].unsqueeze(1) if is_teacher else pred.unsqueeze(1)
             else:
-                output = pred.unsqueeze(1)
+                out = pred.unsqueeze(1)
+        return outs
+
+    def predict(self, src, trg):
+        outs = self(src, trg, teacher_forcing_ratio=0.0)    # (N, T, output)
+        preds = outs.argmax(-1).to(torch.long)    # (N, T)
         return preds
 
 
@@ -133,4 +145,4 @@ if __name__ == '__main__':
     sample = next(iterator)
     print(sample[0].device, sample[1].device)
     seq2seq = Seq2Seq(dataset.input_vocab_len, dataset.output_vocab_len, **config['seq2seq']).cuda()
-    print(seq2seq(sample[0], sample[1]))
+    print(seq2seq(sample[0], sample[1]).shape)
