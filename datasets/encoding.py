@@ -3,7 +3,7 @@ from nltk import FreqDist
 import numpy as np
 import torch
 
-dataset_cfg = load_config('config/dataset.yaml')
+dataset_cfg = load_config('./configs/dataset.yaml')
 
 
 # vectorize each word of each sentence as a binary array

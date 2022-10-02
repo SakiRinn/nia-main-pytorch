@@ -2,7 +2,7 @@ from random import randint, sample
 from fileIO import load_config
 import sys
 
-dataset_cfg = load_config('config/dataset.yaml')
+dataset_cfg = load_config('./configs/dataset.yaml')
 
 
 def text_to_word_sequence(text,
