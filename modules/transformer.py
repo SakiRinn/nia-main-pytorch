@@ -1,4 +1,4 @@
-from utils.parsing import get_activation
+from utils import get_activation
 
 import torch
 import torch.nn as nn
@@ -9,16 +9,16 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.embedding_dim = embedding_dim
 
-    def forward(self, inputs):
-        # inputs: (N, T, embed)
-        pos = torch.arange(inputs.size(1)).expand(inputs.size()[:-1]).unsqueeze(-1).expand(inputs.size())
-        idx = torch.arange(self.embedding_dim).expand(inputs.size())
-        angles = self.get_angles(pos, idx).to(inputs.device)    # (N, T, embed)
+    def forward(self, input):
+        # input: (N, T, embed)
+        pos = torch.arange(input.size(1)).expand(input.size()[:-1]).unsqueeze(-1).expand(input.size())
+        idx = torch.arange(self.embedding_dim).expand(input.size())
+        angles = self.get_angles(pos, idx).to(input.device)    # (N, T, embed)
 
         angles[:, 0::2] = torch.sin(angles[:, 0::2])    # 2i
         angles[:, 1::2] = torch.cos(angles[:, 1::2])    # 2i+1
 
-        return inputs + angles
+        return input + angles
 
     def get_angles(self, pos, idx):
         """pos * 1/(10000^(2i/d))
@@ -35,8 +35,7 @@ class PositionalEncoding(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, embedding_dim, forward_dim,
-                 num_heads=3, dropout=0.1, activation='Softmax'):
+    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='Softmax'):
         super(EncoderLayer, self).__init__()
 
         self.mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
@@ -50,20 +49,19 @@ class EncoderLayer(nn.Module):
         self.layerNorm1 = nn.LayerNorm(embedding_dim, eps=1e-6)
         self.layerNorm2 = nn.LayerNorm(embedding_dim, eps=1e-6)
 
-    def forward(self, x):
-        # x: (N, T, embed)
-        attn, _ = self.mha(x, x, x)
+    def forward(self, x, key_padding_mask=None):
+        # x, key_padding_mask: (N, T, embed), (N, T)
+        attn, _ = self.mha(x, x, x, key_padding_mask=key_padding_mask)
         attn = self.layerNorm1(x + attn)
 
         out = self.ffn(attn)
-        out = self.layerNorm2(attn + out)
+        out = self.layerNorm2(attn + out)    # (N, T, embed)
 
         return out
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, embedding_dim, forward_dim,
-                 num_heads=3, dropout=0.1, activation='Softmax'):
+    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='Softmax'):
         super(DecoderLayer, self).__init__()
 
         self.masked_mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
@@ -80,15 +78,17 @@ class DecoderLayer(nn.Module):
         self.layerNorm2 = nn.LayerNorm(embedding_dim, eps=1e-6)
         self.layerNorm3 = nn.LayerNorm(embedding_dim, eps=1e-6)
 
-    def forward(self, encoder_outputs, x, mask=None):
-        attn1, attn1_weight = self.masked_mha(x, x, x, mask)
+    def forward(self, enc_outputs, x, key_padding_mask=None, attn_mask=None):
+        # x, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)
+        attn1, attn1_weight = self.masked_mha(x, x, x,
+                                              key_padding_mask=key_padding_mask, attn_mask=attn_mask)
         attn1 = self.layerNorm1(x + attn1)
 
-        attn2, attn2_weight = self.mha(attn1, encoder_outputs, encoder_outputs)
+        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs, key_padding_mask=key_padding_mask)
         attn2 = self.layerNorm2(attn1 + attn2)
 
         ffn_output = self.ffn(attn2)
-        out = self.layerNorm3(attn2 + ffn_output)
+        out = self.layerNorm3(attn2 + ffn_output)    # (N, T, embed)
 
         return out, attn1_weight, attn2_weight
 
@@ -107,16 +107,16 @@ class Encoder(nn.Module):
             PositionalEncoding(embedding_dim),
             nn.Dropout(dropout)
         )
-        self.layers = nn.ModuleList([EncoderLayer(embedding_dim, forward_dim, num_heads, dropout, activation)
-                                     for _ in range(num_layers)])
+        self.enc_layers = nn.ModuleList([EncoderLayer(embedding_dim, forward_dim, num_heads, dropout, activation)
+                                         for _ in range(num_layers)])
 
-    def forward(self, x):
-        # x: (N, T)
-        embedded = self.embedding(x)
+    def forward(self, src, key_padding_mask=None):
+        # src, key_padding_mask: (N, T), (N, T)
+        embedded = self.embedding(src)
         out = self.pos_encoding(embedded)
 
         for i in range(self.num_layers):
-            out = self.layers[i](out)
+            out = self.enc_layers[i](out, key_padding_mask)
 
         return out
 
@@ -135,19 +135,19 @@ class Decoder(nn.Module):
             PositionalEncoding(embedding_dim),
             nn.Dropout(dropout)
         )
-        self.layers = nn.ModuleList([DecoderLayer(embedding_dim, forward_dim, num_heads, dropout, activation)
-                                     for _ in range(num_layers)])
+        self.dec_layers = nn.ModuleList([DecoderLayer(embedding_dim, forward_dim, num_heads, dropout, activation)
+                                         for _ in range(num_layers)])
 
-    def forward(self, encoder_outputs, x, mask=None):
-        # x: (N, T)
-        embedded = self.embedding(x)
-        embedded = torch.tensor(self.embedding_dim).sqrt().to(x.device) * embedded
+    def forward(self, enc_outputs, trg, key_padding_mask=None, attn_mask=None):
+        # trg, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)
+        embedded = self.embedding(trg)
+        embedded = torch.tensor(self.embedding_dim).sqrt().to(trg.device) * embedded
         out = self.pos_encoding(embedded)
 
         attn1_weights = []
         attn2_weights = []
         for i in range(self.num_layers):
-            out, attn1_weight, attn2_weight = self.layers[i](encoder_outputs, out, mask)
+            out, attn1_weight, attn2_weight = self.dec_layers[i](enc_outputs, out, key_padding_mask, attn_mask)
             attn1_weights.append(attn1_weight)
             attn2_weights.append(attn2_weight)
 
@@ -168,10 +168,10 @@ class Transformer(nn.Module):
             get_activation(activation)
         )
 
-    def forward(self, src, trg, mask=None):
-        encoder_outputs = self.encoder(src)
-        decoder_outputs, _, _ = self.decoder(encoder_outputs, trg, mask)
-        outs = self.dense(decoder_outputs)
+    def forward(self, src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
+        enc_outputs = self.encoder(src, src_key_padding_mask)
+        dec_outputs, _, _ = self.decoder(enc_outputs, trg, trg_key_padding_mask, attn_mask)
+        outs = self.dense(dec_outputs)
         return outs
 
     def predict(self, src, trg, mask=None):

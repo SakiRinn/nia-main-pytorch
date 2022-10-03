@@ -24,12 +24,12 @@ def find_checkpoint(exp_dir: str):
     '''Load the latest checkpoint in "exp_dir/". '''
     checkpoints = glob.glob(os.path.join(exp_dir, 'ckpt_*_*.pth'))
     if not checkpoints:
-        return None
-    exp_id = max([int(re.findall('\d+', ckpt)[-1]) for ckpt in checkpoints])
-    ckpt_dir = glob.glob(os.path.join(exp_dir, f'ckpt_*_{exp_id}.pth'))
+        return None, 0
+    epoch = max([int(re.findall('\d+', ckpt)[-1]) for ckpt in checkpoints])
+    ckpt_dir = glob.glob(os.path.join(exp_dir, f'ckpt_*_{epoch}.pth'))
     if len(ckpt_dir) != 1:
-        raise FileExistsError("There are the same checkpoints but for different models in the directory.")
-    return torch.load(ckpt_dir[0])
+        raise FileExistsError("There are checkpoints at the same epoch but for different models.")
+    return torch.load(ckpt_dir[0]), epoch
 
 
 def save_checkpoint(dir: str, model, epoch=0):

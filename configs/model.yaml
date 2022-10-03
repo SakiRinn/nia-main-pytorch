@@ -6,6 +6,7 @@ seq2seq:
     encoder: 0.5
     decoder: 0.2
   activation: Softmax
+  teacher_forcing_ratio: 0.5
 
 transformer:
   embedding_dim: 512

@@ -1,4 +1,4 @@
-from utils.parsing import get_activation
+from utils import get_activation
 import random
 
 import torch
@@ -15,9 +15,9 @@ class BilinearAttention(nn.Module):
         nn.init.xavier_uniform_(self.W)
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, hidden, encoder_outputs):
-        # hidden, encoder_outputs: (N, 1, hidden), (N, T, hidden)
-        score = hidden.matmul(self.W).matmul(encoder_outputs.transpose(1, 2)).squeeze()    # (N, T)
+    def forward(self, hidden, enc_outputs):
+        # hidden, enc_outputs: (N, 1, hidden), (N, T, hidden)
+        score = hidden.matmul(self.W).matmul(enc_outputs.transpose(1, 2)).squeeze()    # (N, T)
         T = score.size(1)
         attn = (self.softmax(score).unsqueeze(2) * hidden.repeat(1, T, 1)).sum(1)    # (N, hidden)
         return attn
@@ -36,9 +36,9 @@ class Encoder(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers,
                             batch_first=True, dropout=dropout, bidirectional=True)
 
-    def forward(self, x, state=None):
+    def forward(self, src, state=None):
         # x: (N, T)
-        embedded = self.embedding(x)    # (N, T, embed)
+        embedded = self.embedding(src)    # (N, T, embed)
         out, state = self.lstm(embedded, state)    # (N, T, 2*hidden), (2*layer, N, hidden)
         # Avg bidirectional outputs -> (N, T, hidden)
         out = (out[:, :, :self.hidden_dim] + out[:, :, self.hidden_dim:]) / 2
@@ -67,11 +67,11 @@ class Decoder(nn.Module):
             get_activation(activation)
         )
 
-    def forward(self, encoder_outputs, x, state=None):
-        # encoder_outputs, x: (N, T, hidden), (N, T)
-        embedded = self.embedding(x)    # (N, 1, embed)
+    def forward(self, enc_outputs, trg, state=None):
+        # enc_outputs, x: (N, T, hidden), (N, T)
+        embedded = self.embedding(trg)    # (N, 1, embed)
         out, state = self.lstm(embedded, state)    # (N, 1, hidden)
-        out = self.attention(out[:, -1, :].unsqueeze(1), encoder_outputs)    # (N, 1, hidden)
+        out = self.attention(out[:, -1, :].unsqueeze(1), enc_outputs)    # (N, 1, hidden)
         out = self.dense(out)    # (N, 1, embed)
         return out, state
 
@@ -99,11 +99,11 @@ class Seq2Seq(nn.Module):
         max_len = trg.size(1)
         outs = torch.zeros(batch_dim, max_len, self.output_vocab_len).to(src.device)
 
-        encoder_outputs, state = self.encoder(src)
+        enc_outputs, state = self.encoder(src)
         state = tuple([s[:self.decoder.num_layers] for s in state])
         out = trg[:, 0].unsqueeze(1)
         for t in range(1, max_len):
-            out, state = self.decoder(encoder_outputs, out, state)
+            out, state = self.decoder(enc_outputs, out, state)
             pred = out.argmax(1).to(torch.long)
             outs[:, t, :] = out
             if self.training:
