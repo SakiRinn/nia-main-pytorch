@@ -60,4 +60,6 @@ docs/_build/
 # PyBuilder
 target/
 
+# Output File
 res/weights
+nohup.out
