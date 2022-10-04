@@ -1,5 +1,5 @@
+from .fileIO import load_config
 from random import randint, sample
-from fileIO import load_config
 import sys
 
 dataset_cfg = load_config('./configs/dataset.yaml')

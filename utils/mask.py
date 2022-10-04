@@ -8,5 +8,6 @@ def key_padding_mask(seq: torch.Tensor, padding_value=0.0):
 
 
 def square_subsequent_mask(size: int):
-    mask = torch.triu(torch.ones((size, size)), diagonal=1)
+    # size: The length of target.
+    mask = torch.triu(torch.ones((size, size)).to(torch.bool), diagonal=1)
     return mask    # (size, size)

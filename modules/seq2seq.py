@@ -1,4 +1,4 @@
-from utils import get_activation
+from utils.getter import get_activation
 import random
 
 import torch

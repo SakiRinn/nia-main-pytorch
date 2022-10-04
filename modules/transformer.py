@@ -1,4 +1,4 @@
-from utils import get_activation
+from utils.getter import get_activation
 
 import torch
 import torch.nn as nn
@@ -84,7 +84,7 @@ class DecoderLayer(nn.Module):
                                               key_padding_mask=key_padding_mask, attn_mask=attn_mask)
         attn1 = self.layerNorm1(x + attn1)
 
-        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs, key_padding_mask=key_padding_mask)
+        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs)
         attn2 = self.layerNorm2(attn1 + attn2)
 
         ffn_output = self.ffn(attn2)
@@ -142,7 +142,7 @@ class Decoder(nn.Module):
         # trg, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)
         embedded = self.embedding(trg)
         embedded = torch.tensor(self.embedding_dim).sqrt().to(trg.device) * embedded
-        out = self.pos_encoding(embedded)
+        out = self.pos_encoding(embedded)    # (N, T, embed)
 
         attn1_weights = []
         attn2_weights = []

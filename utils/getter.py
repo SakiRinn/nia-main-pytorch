@@ -5,7 +5,7 @@ def get_model(name: str):
 
 def get_loss(name: str):
     import torch.nn as nnLoss
-    return eval('nnLoss.' + name)
+    return eval('nnLoss.' + name)()
 
 
 def get_activation(name: str):
@@ -18,3 +18,8 @@ def get_activation(name: str):
 def get_optimizer(name: str):
     import torch.optim as optim
     return eval('optim.' + name)
+
+
+def get_lr_scheduler(name: str):
+    import modules.optimizer as optim_
+    return eval('optim_.' + name)
