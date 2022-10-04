@@ -1,4 +1,3 @@
-from utils.getter import get_activation
 import random
 
 import torch
@@ -46,8 +45,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_vocab_len, embedding_dim, hidden_dim,
-                 num_layers=1, dropout=0.2, activation='Softmax'):
+    def __init__(self, output_vocab_len, embedding_dim, hidden_dim, num_layers=1, dropout=0.2):
         super(Decoder, self).__init__()
         # Size
         self.output_vocab_len = output_vocab_len
@@ -62,10 +60,7 @@ class Decoder(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers,
                             batch_first=True, dropout=dropout, bidirectional=False)
         self.attention = BilinearAttention(hidden_dim)
-        self.dense = nn.Sequential(
-            nn.Linear(hidden_dim, output_vocab_len),
-            get_activation(activation)
-        )
+        self.dense = nn.Linear(hidden_dim, output_vocab_len)
 
     def forward(self, enc_outputs, trg, state=None):
         # enc_outputs, x: (N, T, hidden), (N, T)
@@ -78,8 +73,7 @@ class Decoder(nn.Module):
 
 class Seq2Seq(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, hidden_dim,
-                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2,
-                 activation='Softmax', training=False):
+                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2, training=False):
         super(Seq2Seq, self).__init__()
         # Size
         self.input_vocab_len = input_vocab_len
@@ -89,7 +83,7 @@ class Seq2Seq(nn.Module):
         self.num_layers = num_layers
         # Model
         self.encoder = Encoder(input_vocab_len, embedding_dim, hidden_dim, num_layers, encoder_dropout)
-        self.decoder = Decoder(output_vocab_len, embedding_dim, hidden_dim, num_layers, decoder_dropout, activation)
+        self.decoder = Decoder(output_vocab_len, embedding_dim, hidden_dim, num_layers, decoder_dropout)
         # Option
         self.training = training
 

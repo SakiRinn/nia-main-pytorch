@@ -41,7 +41,7 @@ class EncoderLayer(nn.Module):
         self.mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation),
+            get_activation(activation, dim=-1),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -69,7 +69,7 @@ class DecoderLayer(nn.Module):
 
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation),
+            get_activation(activation, dim=-1),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -163,10 +163,7 @@ class Transformer(nn.Module):
                                num_layers, num_heads, encoder_dropout, activation)
         self.decoder = Decoder(output_vocab_len, embedding_dim, forward_dim,
                                num_layers, num_heads, decoder_dropout, activation)
-        self.dense = nn.Sequential(
-            nn.Linear(embedding_dim, output_vocab_len),
-            get_activation(activation)
-        )
+        self.dense = nn.Linear(embedding_dim, output_vocab_len)
 
     def forward(self, src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
         enc_outputs = self.encoder(src, src_key_padding_mask)

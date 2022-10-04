@@ -39,9 +39,10 @@ def train(resume=''):
     if model_name == 'seq2seq':
         teacher_forcing_ratio = model_params['teacher_forcing_ratio']
         del model_params['teacher_forcing_ratio']
-    model = getter.get_model(run_cfg['model'].capitalize())(dataset.input_vocab_len,
-                                                            dataset.output_vocab_len,
-                                                            **model_params).to(device)
+    model = getter.get_model(run_cfg['model'].capitalize(),
+                             dataset.input_vocab_len,
+                             dataset.output_vocab_len,
+                             **model_params).to(device)
 
     # Resume
     start_epoch = 0
@@ -51,7 +52,7 @@ def train(resume=''):
 
     # Module
     loss_fn = getter.get_loss(run_cfg['train']['loss'])
-    optimizer = getter.get_optimizer(run_cfg['train']['optimizer'])(model.parameters(), run_cfg['train']['lr'])
+    optimizer = getter.get_optimizer(run_cfg['train']['optimizer'], model.parameters(), run_cfg['train']['lr'])
     if model_name == 'transformer':
         lr_scheduler = TransformerLR(optimizer, model_cfg['transformer']['embedding_dim'])
 
