@@ -111,32 +111,3 @@ class Seq2Seq(nn.Module):
         outs = self(src, trg, teacher_forcing_ratio=0.0)    # (N, T, output)
         preds = outs.argmax(-1).to(torch.long)    # (N, T)
         return preds
-
-
-if __name__ == '__main__':
-    import yaml
-    def load_yaml(path: str):
-        output = None
-        with open(path, 'r') as f:
-            output = yaml.load(f, yaml.FullLoader)
-        if 'seq2seq' in output.keys():
-            output['seq2seq']['encoder_dropout'] = output['seq2seq']['dropout']['encoder']
-            output['seq2seq']['decoder_dropout'] = output['seq2seq']['dropout']['decoder']
-            del output['seq2seq']['dropout']
-        return output
-
-    import sys
-    sys.path.append('.')
-    from datasets import ResDataset
-    from torch.utils.data import DataLoader
-
-    config = load_yaml('config/model.yaml')
-    run_param = load_yaml('config/run.yaml')
-
-    dataset = ResDataset()
-    dl = DataLoader(dataset, run_param['train']['batch_size'], shuffle=True)
-    iterator = iter(dl)
-    sample = next(iterator)
-    print(sample[0].device, sample[1].device)
-    seq2seq = Seq2Seq(dataset.input_vocab_len, dataset.output_vocab_len, **config['seq2seq']).cuda()
-    print(seq2seq(sample[0], sample[1]).shape)

@@ -1,6 +1,6 @@
 train:
   optimizer: RMSprop
-  loss: CrossEntropyLoss
+  loss: MaskedCELoss
   batch_size: 64
   epochs: 200
   lr: 1.0e-4
@@ -13,6 +13,6 @@ test:
   result_file: './res/test_result.txt'
   validation_split: 0.2
 
-model: transformer
+model: Transformer
 device: cuda
 checkpoint_dir: './res/weights/'

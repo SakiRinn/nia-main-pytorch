@@ -35,13 +35,13 @@ class PositionalEncoding(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='Softmax'):
+    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='ReLU'):
         super(EncoderLayer, self).__init__()
 
         self.mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation, dim=-1),
+            get_activation(activation),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -61,7 +61,7 @@ class EncoderLayer(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='Softmax'):
+    def __init__(self, embedding_dim, forward_dim, num_heads=3, dropout=0.1, activation='ReLU'):
         super(DecoderLayer, self).__init__()
 
         self.masked_mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout, batch_first=True)
@@ -69,7 +69,7 @@ class DecoderLayer(nn.Module):
 
         self.ffn = nn.Sequential(
             nn.Linear(embedding_dim, forward_dim),
-            get_activation(activation, dim=-1),
+            get_activation(activation),
             nn.Linear(forward_dim, embedding_dim),
             nn.Dropout(dropout)
         )
@@ -78,13 +78,15 @@ class DecoderLayer(nn.Module):
         self.layerNorm2 = nn.LayerNorm(embedding_dim, eps=1e-6)
         self.layerNorm3 = nn.LayerNorm(embedding_dim, eps=1e-6)
 
-    def forward(self, enc_outputs, x, key_padding_mask=None, attn_mask=None):
-        # x, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)
+    def forward(self, enc_outputs, x,
+                src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
+        # x, trg_key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)/(T, T)
         attn1, attn1_weight = self.masked_mha(x, x, x,
-                                              key_padding_mask=key_padding_mask, attn_mask=attn_mask)
+                                              key_padding_mask=trg_key_padding_mask, attn_mask=attn_mask)
         attn1 = self.layerNorm1(x + attn1)
 
-        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs)
+        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs,
+                                       key_padding_mask=src_key_padding_mask)
         attn2 = self.layerNorm2(attn1 + attn2)
 
         ffn_output = self.ffn(attn2)
@@ -95,7 +97,7 @@ class DecoderLayer(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, input_vocab_len, embedding_dim, forward_dim,
-                 num_layers=6, num_heads=3, dropout=0.1, activation='Softmax'):
+                 num_layers=6, num_heads=3, dropout=0.1, activation='ReLU'):
         super(Encoder, self).__init__()
         # Size
         self.num_layers = num_layers
@@ -123,7 +125,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, output_vocab_len, embedding_dim, forward_dim,
-                 num_layers=6, num_heads=3, dropout=0.1, activation='Softmax'):
+                 num_layers=6, num_heads=3, dropout=0.1, activation='ReLU'):
         super(Decoder, self).__init__()
         # Size
         self.embedding_dim = embedding_dim
@@ -138,8 +140,9 @@ class Decoder(nn.Module):
         self.dec_layers = nn.ModuleList([DecoderLayer(embedding_dim, forward_dim, num_heads, dropout, activation)
                                          for _ in range(num_layers)])
 
-    def forward(self, enc_outputs, trg, key_padding_mask=None, attn_mask=None):
-        # trg, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)
+    def forward(self, enc_outputs, trg,
+                src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
+        # trg, key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)/(T, T)
         embedded = self.embedding(trg)
         embedded = torch.tensor(self.embedding_dim).sqrt().to(trg.device) * embedded
         out = self.pos_encoding(embedded)    # (N, T, embed)
@@ -147,7 +150,8 @@ class Decoder(nn.Module):
         attn1_weights = []
         attn2_weights = []
         for i in range(self.num_layers):
-            out, attn1_weight, attn2_weight = self.dec_layers[i](enc_outputs, out, key_padding_mask, attn_mask)
+            out, attn1_weight, attn2_weight = self.dec_layers[i](enc_outputs, out,
+                                                                 src_key_padding_mask, trg_key_padding_mask, attn_mask)
             attn1_weights.append(attn1_weight)
             attn2_weights.append(attn2_weight)
 
@@ -156,7 +160,7 @@ class Decoder(nn.Module):
 
 class Transformer(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, forward_dim,
-                 num_layers=6, num_heads=3, encoder_dropout=0.1, decoder_dropout=0.1, activation='Softmax'):
+                 num_layers=6, num_heads=3, encoder_dropout=0.1, decoder_dropout=0.1, activation='ReLU'):
         super(Transformer, self).__init__()
         # Model
         self.encoder = Encoder(input_vocab_len, embedding_dim, forward_dim,
@@ -167,7 +171,8 @@ class Transformer(nn.Module):
 
     def forward(self, src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
         enc_outputs = self.encoder(src, src_key_padding_mask)
-        dec_outputs, _, _ = self.decoder(enc_outputs, trg, trg_key_padding_mask, attn_mask)
+        dec_outputs, _, _ = self.decoder(enc_outputs, trg,
+                                         src_key_padding_mask, trg_key_padding_mask, attn_mask)
         outs = self.dense(dec_outputs)
         return outs
 
@@ -175,36 +180,3 @@ class Transformer(nn.Module):
         outs = self(src, trg, mask)    # (N, T, output)
         preds = outs.argmax(-1).to(torch.long)    # (N, T)
         return preds
-
-
-if __name__ == '__main__':
-    import yaml
-    def load_yaml(path: str):
-        output = None
-        with open(path, 'r') as f:
-            output = yaml.load(f, yaml.FullLoader)
-        if 'seq2seq' in output.keys():
-            output['seq2seq']['encoder_dropout'] = output['seq2seq']['dropout']['encoder']
-            output['seq2seq']['decoder_dropout'] = output['seq2seq']['dropout']['decoder']
-            del output['seq2seq']['dropout']
-        if 'transformer' in output.keys():
-            output['transformer']['encoder_dropout'] = output['transformer']['dropout']['encoder']
-            output['transformer']['decoder_dropout'] = output['transformer']['dropout']['decoder']
-            del output['transformer']['dropout']
-        return output
-
-    import sys
-    sys.path.append('.')
-    from datasets import ResDataset
-    from torch.utils.data import DataLoader
-
-    config = load_yaml('config/model.yaml')
-    run_param = load_yaml('config/run.yaml')
-
-    dataset = ResDataset()
-    dl = DataLoader(dataset, run_param['train']['batch_size'], shuffle=True)
-    iterator = iter(dl)
-    sample = next(iterator)
-    print(sample[0].device, sample[1].device)
-    transformer = Transformer(dataset.input_vocab_len, dataset.output_vocab_len, **config['transformer']).cuda()
-    print(transformer(sample[0], sample[1]))

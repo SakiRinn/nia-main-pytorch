@@ -36,10 +36,10 @@ def train(resume=''):
     # Model
     model_name = run_cfg['model']
     model_params = model_cfg[model_name]
-    if model_name == 'seq2seq':
+    if model_name == 'Seq2Seq':
         teacher_forcing_ratio = model_params['teacher_forcing_ratio']
         del model_params['teacher_forcing_ratio']
-    model = getter.get_model(run_cfg['model'].capitalize(),
+    model = getter.get_model(run_cfg['model'],
                              dataset.input_vocab_len,
                              dataset.output_vocab_len,
                              **model_params).to(device)
@@ -53,26 +53,27 @@ def train(resume=''):
     # Module
     loss_fn = getter.get_loss(run_cfg['train']['loss'])
     optimizer = getter.get_optimizer(run_cfg['train']['optimizer'], model.parameters(), run_cfg['train']['lr'])
-    if model_name == 'transformer':
-        lr_scheduler = TransformerLR(optimizer, model_cfg['transformer']['embedding_dim'])
+    if model_name == 'Transformer':
+        lr_scheduler = TransformerLR(optimizer, model_cfg['Transformer']['embedding_dim'])
 
     # Main
-    for epoch in trange(start_epoch, end_epoch):
+    for epoch in trange(start_epoch + 1, end_epoch + 1):
         # Step
-        for step, data in enumerate(data_loader):
+        for step, data in enumerate(data_loader, start=1):
             src, trg = data[0].to(device), data[1].to(device)
             optimizer.zero_grad()
 
-            if model_name == 'seq2seq':
+            if model_name == 'Seq2Seq':
                 loss = loss_fn(model(src, trg, teacher_forcing_ratio), trg)
-            elif model_name == 'transformer':
+            elif model_name == 'Transformer':
                 src_key_padding_mask = mask.key_padding_mask(src).to(device)
                 trg_key_padding_mask = mask.key_padding_mask(trg).to(device)
                 attn_mask = mask.square_subsequent_mask(trg.size(1)).to(device)
-                loss = loss_fn(model(src, trg, src_key_padding_mask, trg_key_padding_mask, attn_mask), trg)
+                loss = loss_fn(model(src, trg, src_key_padding_mask, trg_key_padding_mask, attn_mask),
+                               trg, trg_key_padding_mask)
 
             loss.backward()
-            if step % run_cfg['train']['log_interval_steps'] == 0:
+            if step % run_cfg['train']['log_interval_steps'] == 0 or step == len(data_loader):
                 logger.info(f'[Epoch {epoch}/Step {step}] loss: {loss:.6f}, lr: {lr_scheduler.get_last_lr()[0]:.6f}')
             optimizer.step()
             lr_scheduler.step()

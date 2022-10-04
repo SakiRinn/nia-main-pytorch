@@ -7,6 +7,7 @@ class TransformerLR(_LRScheduler):
         self.optimizer = optimizer
         self.d_model = d_model    # embedding dim
         self.warmup_steps = warmup_steps
+
         super(TransformerLR, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
