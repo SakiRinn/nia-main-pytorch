@@ -1,5 +1,6 @@
 def get_model(name: str, *args, **kwargs):
     import torch.nn
+
     if hasattr(torch.nn, name.capitalize()):
         try:
             return getattr(torch.nn, name.capitalize())(*args, **kwargs)
@@ -11,6 +12,7 @@ def get_model(name: str, *args, **kwargs):
 def get_loss(name: str, *args, **kwargs):
     import torch.nn
     import modules.loss
+
     if hasattr(torch.nn, name.capitalize()):
         try:
             return getattr(torch.nn, name.capitalize())(*args, **kwargs)
@@ -26,6 +28,7 @@ def get_loss(name: str, *args, **kwargs):
 
 def get_activation(name: str, *args, **kwargs):
     import torch.nn
+
     if hasattr(torch.nn, name.capitalize()):
         try:
             return getattr(torch.nn, name.capitalize())(*args, **kwargs)
@@ -34,15 +37,27 @@ def get_activation(name: str, *args, **kwargs):
     raise AttributeError(f'There is no class named {name}.')
 
 
-def get_optimizer(name: str, *args, **kwargs):
+def get_optimizer(name: str, params, lr, *args, **kwargs):
     import torch.optim
     import modules.optimizer
+
     if hasattr(torch.optim, name.capitalize()):
         try:
-            return getattr(torch.optim, name.capitalize())(*args, **kwargs)
+            return getattr(torch.optim, name.capitalize())(params, lr, *args, **kwargs)
         except TypeError:
-            return getattr(torch.optim, name.capitalize())()
+            return getattr(torch.optim, name.capitalize())(params, lr)
     elif hasattr(modules.optimizer, name.capitalize()):
+        try:
+            return getattr(modules.optimizer, name.capitalize())(params, lr, *args, **kwargs)
+        except TypeError:
+            return getattr(modules.optimizer, name.capitalize())(params, lr)
+    raise AttributeError(f'There is no class named {name}.')
+
+
+def get_lr_scheduler(name: str, *args, **kwargs):
+    import modules.optimizer
+
+    if hasattr(modules.optimizer, name.capitalize()):
         try:
             return getattr(modules.optimizer, name.capitalize())(*args, **kwargs)
         except TypeError:
