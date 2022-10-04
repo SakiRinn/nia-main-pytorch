@@ -1,4 +1,4 @@
-import utils
+from .pre_process import read
 import datasets.encoding as encoding
 
 import torch
@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 class ResDataset(Dataset):
     def __init__(self):
         super(ResDataset, self).__init__()
-        input_words, output_words = utils.read()
+        input_words, output_words = read()
 
         self.input_index_to_word, self.input_vocab_len, self.input_word_to_index = encoding.build_index(input_words)
         self.output_index_to_word, self.output_vocab_len, self.output_word_to_index = encoding.build_index(output_words)

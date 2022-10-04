@@ -1,4 +1,4 @@
-from .fileIO import load_config
+from utils.fileIO import load_config
 from random import randint, sample
 import sys
 
