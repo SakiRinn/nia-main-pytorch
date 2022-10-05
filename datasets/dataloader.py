@@ -40,9 +40,6 @@ class ResDataset(Dataset):
     def words(self):
         return self.input_words, self.output_words
 
-    def max_len(self):
-        return self.input_max_len, self.output_max_len
-
     def sos_index(self):
         return self.input_sos_index, self.output_sos_index
 
