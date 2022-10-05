@@ -24,8 +24,8 @@ class ResDataset(Dataset):
         self.input_max_len = max([len(sentence) for sentence in self.input_words])
         self.output_max_len = max([len(sentence) for sentence in self.output_words])
 
-        self.input_words = pad_sequence(self.input_words).T.to(torch.long)[:5]
-        self.output_words = pad_sequence(self.output_words).T.to(torch.long)[:5]
+        self.input_words = pad_sequence(self.input_words).T.to(torch.long)
+        self.output_words = pad_sequence(self.output_words).T.to(torch.long)
 
 
     def __len__(self):
