@@ -197,8 +197,14 @@ def read():
     for line in lines:
         if line and not line.startswith('#'):
             input_text, output_text = line.split('>')
-            input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
-            output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
+            input_word = text_to_word_sequence(input_text, filters=dataset_cfg['filters'])
+            input_word.insert(0, 'SOS')
+            input_word.append('EOS')
+            input_words.append(input_word)
+            output_word = text_to_word_sequence(output_text, filters=dataset_cfg['filters'])
+            output_word.insert(0, 'SOS')
+            output_word.append('EOS')
+            output_words.append(output_word)
 
     return input_words, output_words
 
@@ -217,9 +223,16 @@ def read_test():
 
     for input_text, output_text in zip(input_lines, output_lines):
         if input_text and not input_text.startswith('#'):
-            input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+            input_word = text_to_word_sequence(input_text, filters=dataset_cfg['filters'])
+            input_word.insert(0, 'SOS')
+            input_word.append('EOS')
+            input_words.append(input_word)
         if output_text and not output_text.startswith('#'):
-            output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
+            output_word = text_to_word_sequence(output_text, filters=dataset_cfg['filters'])
+            output_word.insert(0, 'SOS')
+            output_word.append('EOS')
+            output_words.append(output_word)
+
 
     return input_words, output_words
 

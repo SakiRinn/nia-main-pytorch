@@ -81,12 +81,10 @@ class DecoderLayer(nn.Module):
     def forward(self, enc_outputs, x,
                 src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
         # x, trg_key_padding_mask, attn_mask: (N, T), (N, T), (N*num_heads, T, T)/(T, T)
-        attn1, attn1_weight = self.masked_mha(x, x, x,
-                                              key_padding_mask=trg_key_padding_mask, attn_mask=attn_mask)
+        attn1, attn1_weight = self.masked_mha(x, x, x, key_padding_mask=trg_key_padding_mask, attn_mask=attn_mask)
         attn1 = self.layerNorm1(x + attn1)
 
-        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs,
-                                       key_padding_mask=src_key_padding_mask)
+        attn2, attn2_weight = self.mha(attn1, enc_outputs, enc_outputs, key_padding_mask=src_key_padding_mask)
         attn2 = self.layerNorm2(attn1 + attn2)
 
         ffn_output = self.ffn(attn2)
@@ -162,6 +160,12 @@ class Transformer(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, forward_dim,
                  num_layers=6, num_heads=3, encoder_dropout=0.1, decoder_dropout=0.1, activation='ReLU'):
         super(Transformer, self).__init__()
+        # Size
+        self.input_vocab_len = input_vocab_len
+        self.output_vocab_len = output_vocab_len
+        self.embedding_dim = embedding_dim
+        self.num_layers = num_layers
+        self.num_heads = num_heads
         # Model
         self.encoder = Encoder(input_vocab_len, embedding_dim, forward_dim,
                                num_layers, num_heads, encoder_dropout, activation)
@@ -176,6 +180,22 @@ class Transformer(nn.Module):
         outs = self.dense(dec_outputs)
         return outs
 
-    def pred2index(self, outs):
-        preds = outs.argmax(-1).to(torch.long)    # (N, T)
-        return preds
+    def predict(self, src, sos_idx=0, eos_idx=0, src_key_padding_mask=None, *, max_len=25):
+        # src: (1, T)
+        out = torch.tensor(sos_idx).expand(1, 1).to(src.device)
+        outs = torch.zeros(1, max_len, self.output_vocab_len)
+        preds = torch.zeros(1, max_len)
+
+        enc_outputs = self.encoder(src, src_key_padding_mask)
+        for t in range(max_len):
+            dec_outputs, _, _ = self.decoder(enc_outputs, out, src_key_padding_mask)
+            out = self.dense(dec_outputs)    # (1, T)
+            outs[:, t, :] = out
+            out = out.argmax(-1).to(torch.long)
+            preds[:, t] = out
+            if out.item() == eos_idx:
+                break
+
+        outs = torch.tensor(outs).to(src.device)
+        preds = torch.tensor(preds).to(src.device)
+        return outs, preds

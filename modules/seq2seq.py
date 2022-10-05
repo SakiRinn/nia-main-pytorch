@@ -16,8 +16,8 @@ class BilinearAttention(nn.Module):
 
     def forward(self, hidden, enc_outputs):
         # hidden, enc_outputs: (N, 1, hidden), (N, T, hidden)
-        score = hidden.matmul(self.W).matmul(enc_outputs.transpose(1, 2)).squeeze()    # (N, T)
-        T = score.size(1)
+        score = hidden.matmul(self.W).matmul(enc_outputs.transpose(1, 2)).squeeze(1)    # (N, T)
+        T = score.size(-1)
         attn = (self.softmax(score).unsqueeze(2) * hidden.repeat(1, T, 1)).sum(1)    # (N, hidden)
         return attn
 
@@ -73,7 +73,7 @@ class Decoder(nn.Module):
 
 class Seq2Seq(nn.Module):
     def __init__(self, input_vocab_len, output_vocab_len, embedding_dim, hidden_dim,
-                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2, training=False):
+                 num_layers=1, encoder_dropout=0.5, decoder_dropout=0.2, teacher_forcing_ratio=0.5):
         super(Seq2Seq, self).__init__()
         # Size
         self.input_vocab_len = input_vocab_len
@@ -85,28 +85,45 @@ class Seq2Seq(nn.Module):
         self.encoder = Encoder(input_vocab_len, embedding_dim, hidden_dim, num_layers, encoder_dropout)
         self.decoder = Decoder(output_vocab_len, embedding_dim, hidden_dim, num_layers, decoder_dropout)
         # Option
-        self.training = training
+        self.teacher_forcing_ratio = teacher_forcing_ratio
 
-    def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        # src, trg: (N, T), train (N, T_max) / eval (N, 1)
-        batch_dim = src.size(0)
+    def forward(self, src, trg):
+        # src, trg: (N, T_src), (N, T_trg)
+        batch_size = src.size(0)
         max_len = trg.size(1)
-        outs = torch.zeros(batch_dim, max_len, self.output_vocab_len).to(src.device)
+        outs = torch.zeros(batch_size, max_len, self.output_vocab_len).to(src.device)
 
         enc_outputs, state = self.encoder(src)
         state = tuple([s[:self.decoder.num_layers] for s in state])
         out = trg[:, 0].unsqueeze(1)
+
         for t in range(1, max_len):
             out, state = self.decoder(enc_outputs, out, state)
             pred = out.argmax(1).to(torch.long)
             outs[:, t, :] = out
-            if self.training:
-                is_teacher = random.random() < teacher_forcing_ratio
-                out = trg[:, t].unsqueeze(1) if is_teacher else pred.unsqueeze(1)
-            else:
-                out = pred.unsqueeze(1)
+            # Teacher force
+            is_teacher = random.random() < self.teacher_forcing_ratio
+            out = trg[:, t].unsqueeze(1) if is_teacher else pred.unsqueeze(1)
+
         return outs
 
-    def pred2index(self, outs):
-        preds = outs.argmax(-1).to(torch.long)    # (N, T)
-        return preds
+    def predict(self, src, sos_idx=0, eos_idx=0, *, max_len=25):
+        # src: (1, T)
+        out = torch.tensor(sos_idx).expand(1, 1).to(src.device)
+        outs = torch.zeros(1, max_len, self.output_vocab_len).to(src.device)
+        preds = torch.zeros(1, max_len)
+
+        enc_outputs, state = self.encoder(src)
+        state = tuple([s[:self.decoder.num_layers] for s in state])
+
+        for t in range(max_len):
+            out, state = self.decoder(enc_outputs, out, state)
+            outs[:, t, :] = out
+            pred = out.argmax(-1).to(torch.long)
+            preds[:, t] = pred
+            # No teacher force
+            out = pred.unsqueeze(0)
+            if pred.item() == eos_idx:
+                break
+
+        return outs, preds

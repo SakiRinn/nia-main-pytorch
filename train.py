@@ -36,12 +36,9 @@ def train(resume=''):
     # Model
     model_name = run_cfg['model']
     model_params = model_cfg[model_name]
-    if model_name == 'Seq2Seq':
-        teacher_forcing_ratio = model_params['teacher_forcing_ratio']
-        del model_params['teacher_forcing_ratio']
     model = getter.get_model(run_cfg['model'],
                              dataset.input_vocab_len,
-                             dataset.output_vocab_len,
+                             dataset.output_vocab_len - 1,
                              **model_params).to(device)
     model.train()
 
@@ -63,20 +60,18 @@ def train(resume=''):
         # Step
         for step, data in enumerate(data_loader, start=1):
             src, trg = data[0].to(device), data[1].to(device)
+            trg_in, trg_real = trg[:, 0:-1], trg[:, 1:]
             optimizer.zero_grad()
 
-            if model_name == 'Seq2Seq':
-                out = model(src, trg, teacher_forcing_ratio)
-                loss = loss_fn(out, trg)
-            elif model_name == 'Transformer':
+            if model_name == 'Transformer':
                 src_key_padding_mask = mask.key_padding_mask(src).to(device)
-                trg_key_padding_mask = mask.key_padding_mask(trg).to(device)
-                attn_mask = mask.square_subsequent_mask(trg.size(1)).to(device)
-                out = model(src, trg, src_key_padding_mask, trg_key_padding_mask, attn_mask)
-                loss = loss_fn(out, trg, trg_key_padding_mask)
+                trg_key_padding_mask = mask.key_padding_mask(trg_in).to(device)
+                attn_mask = mask.square_subsequent_mask(trg_in.size(1)).to(device)
+                out = model(src, trg_in, src_key_padding_mask, trg_key_padding_mask, attn_mask)
+                loss = loss_fn(out, trg_real, trg_key_padding_mask)
             else:
-                out = model(src, trg)
-                loss = loss_fn(out, trg)
+                out = model(src, trg_in)
+                loss = loss_fn(out, trg_real)
 
             loss.backward()
             if step % run_cfg['train']['log_interval_steps'] == 0 or step == len(data_loader):

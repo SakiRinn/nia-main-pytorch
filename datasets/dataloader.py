@@ -13,14 +13,20 @@ class ResDataset(Dataset):
         self.input_index_to_word, self.input_vocab_len, self.input_word_to_index = encoding.build_index(input_words)
         self.output_index_to_word, self.output_vocab_len, self.output_word_to_index = encoding.build_index(output_words)
 
+        self.input_sos_index = self.input_word_to_index['SOS']
+        self.output_sos_index = self.output_word_to_index['SOS']
+        self.input_eos_index = self.input_word_to_index['EOS']
+        self.output_eos_index = self.output_word_to_index['EOS']
+
         self.input_words = encoding.index(input_words, self.input_word_to_index)
         self.output_words = encoding.index(output_words, self.output_word_to_index)
 
         self.input_max_len = max([len(sentence) for sentence in self.input_words])
         self.output_max_len = max([len(sentence) for sentence in self.output_words])
 
-        self.input_words = pad_sequence(self.input_words).T.to(torch.long)
-        self.output_words = pad_sequence(self.output_words).T.to(torch.long)
+        self.input_words = pad_sequence(self.input_words).T.to(torch.long)[:5]
+        self.output_words = pad_sequence(self.output_words).T.to(torch.long)[:5]
+
 
     def __len__(self):
         return min(len(self.input_words), len(self.output_words))
@@ -33,3 +39,12 @@ class ResDataset(Dataset):
 
     def words(self):
         return self.input_words, self.output_words
+
+    def max_len(self):
+        return self.input_max_len, self.output_max_len
+
+    def sos_index(self):
+        return self.input_sos_index, self.output_sos_index
+
+    def eos_index(self):
+        return self.input_eos_index, self.output_eos_index
