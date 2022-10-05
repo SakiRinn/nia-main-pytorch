@@ -41,7 +41,7 @@ def save_checkpoint(dir: str, model, epoch=0, *, exp_id=0):
     torch.save(model, os.path.join(exp_dir, f'ckpt_{model._get_name()}_{epoch}.pth'))
 
 
-def init_logger(dir):
+def init_train(dir):
     '''Get the logger and the current exp_id and create a new "dir/experiment_*/". '''
     experiments = glob.glob(os.path.join(dir, 'experiment_*'))
     exp_id = max([int(re.findall(r'\d+', exp)[-1]) for exp in experiments]) + 1 if experiments else 1
@@ -49,10 +49,26 @@ def init_logger(dir):
     os.mkdir(exp_dir)
 
     logging.basicConfig(filename=os.path.join(exp_dir, 'train.log'),
-                    level=logging.DEBUG,
-                    format='[%(levelname)s] %(asctime)s: %(message)s',
-                    datefmt='%y-%b-%d %H:%M:%S')
+                        format='[%(levelname)s] %(asctime)s: %(message)s',
+                        datefmt='%y-%b-%d %H:%M:%S')
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
 
     return logger, exp_id
+
+
+def init_eval(ckpt_dir):
+    '''Get the logger and create a new "../eval/" if not exists. '''
+    ckpt_name = ckpt_dir.split("/")[-1]
+    dir = os.path.join(*ckpt_dir.split("/")[:-1])
+    eval_dir = os.path.join(dir, 'eval')
+    if not os.path.exists(eval_dir):
+        os.mkdir(eval_dir)
+
+    logging.basicConfig(filename=os.path.join(eval_dir, f'eval-{ckpt_name}.log'),
+                        format='[%(levelname)s] %(asctime)s: %(message)s',
+                        datefmt='%y-%b-%d %H:%M:%S')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    return logger

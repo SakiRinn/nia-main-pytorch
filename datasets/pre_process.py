@@ -138,7 +138,7 @@ def get_entities(username, origin, destination, targets, middleboxes, qos, start
 
 
 def write():
-    with open(dataset_cfg['file'], 'wb') as file:
+    with open(dataset_cfg['train_file'], 'wb') as file:
         for i in range(dataset_cfg['size']):
             qos = []
             sampled_metrics = sample(dataset_cfg['qos_metrics'], randint(0, 4))
@@ -165,7 +165,7 @@ def write():
 
 
 def write_alt():
-    with open(dataset_cfg['file'], 'wb') as file:
+    with open(dataset_cfg['train_file'], 'wb') as file:
         for i in range(dataset_cfg['size']):
             qos = []
             for metric in range(randint(0, 2)):
@@ -191,13 +191,34 @@ def read():
     input_words = []
     output_words = []
 
-    with open(dataset_cfg['file'], 'r') as f:
+    with open(dataset_cfg['train_file'], 'r') as f:
         lines = f.read().split('\n')
 
     for line in lines:
         if line and not line.startswith('#'):
             input_text, output_text = line.split('>')
             input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+            output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
+
+    return input_words, output_words
+
+
+def read_test():
+    input_lines = []
+    output_lines = []
+
+    input_words = []
+    output_words = []
+
+    with open(dataset_cfg['test_file']['input'], 'r') as f:
+        input_lines = f.read().split('\n')
+    with open(dataset_cfg['test_file']['result'], 'r') as f:
+        output_lines = f.read().split('\n')
+
+    for input_text, output_text in zip(input_lines, output_lines):
+        if input_text and not input_text.startswith('#'):
+            input_words.append(text_to_word_sequence(input_text, filters=dataset_cfg['filters']))
+        if output_text and not output_text.startswith('#'):
             output_words.append(text_to_word_sequence(output_text, filters=dataset_cfg['filters']))
 
     return input_words, output_words
@@ -212,7 +233,7 @@ def read_split():
     test_input_words = []
     test_output_words = []
 
-    with open(dataset_cfg['file'], 'r') as f:
+    with open(dataset_cfg['train_file'], 'r') as f:
         lines = f.read().split('\n')
 
     fit_lines = sample(lines, int(len(lines) * 0.7))

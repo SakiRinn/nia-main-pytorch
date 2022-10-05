@@ -2,6 +2,7 @@ train:
   optimizer: RMSprop
   loss: CrossEntropyLoss
   batch_size: 64
+  num_workers: 4
   epochs: 200
   lr:
     initial: 1.0e-4
@@ -9,11 +10,10 @@ train:
   saving_interval_epochs: 10
   log_interval_steps: 10
   max_saving_checkpoints: 10
-
-test:
-  input_file: './res/test_input.txt'
-  result_file: './res/test_result.txt'
-  validation_split: 0.2
+eval:
+  loss: CrossEntropyLoss
+  batch_size: 1
+  num_workers: 4
 
 model: Transformer
 device: cuda

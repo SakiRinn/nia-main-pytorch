@@ -1,4 +1,7 @@
-file: './res/dataset.txt'
+train_file: './res/dataset.txt'
+test_file:
+  input: './res/test_input.txt'
+  result: './res/test_result.txt'
 size: 5000
 vocab_size: 2000
 filters: "!$&*+,-./;<=>?#[\\]^_`{|}~\t\n"

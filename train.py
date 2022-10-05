@@ -3,30 +3,33 @@ import utils.fileIO as fileIO
 import utils.mask as mask
 from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
+import datasets
 from datasets import ResDataset
 
 from tqdm import trange
+import argparse
 
 from torch.utils.data import DataLoader
 
 
 def train(resume=''):
-
     # Config
     model_cfg = fileIO.load_config('./configs/model.yaml')
     run_cfg = fileIO.load_config('./configs/run.yaml')
 
-    logger, exp_id = fileIO.init_logger(run_cfg['checkpoint_dir'])
+    logger, exp_id = fileIO.init_train(run_cfg['checkpoint_dir'])
     device = run_cfg['device']
     end_epoch = run_cfg['train']['epochs']
     lr = run_cfg['train']['lr']['initial']
     lr_scheduler = run_cfg["train"]['lr']['scheduler']
 
     # Dataset
-    dataset = ResDataset()
+    input_words, output_words = datasets.read()
+
+    dataset = ResDataset(input_words, output_words)
     data_loader = DataLoader(dataset,
                              batch_size=run_cfg['train']['batch_size'],
-                             num_workers=4,
+                             num_workers=run_cfg['train']['num_workers'],
                              shuffle=True,
                              pin_memory=True)
 
@@ -40,12 +43,14 @@ def train(resume=''):
                              dataset.input_vocab_len,
                              dataset.output_vocab_len,
                              **model_params).to(device)
+    model.train()
 
     # Resume
     start_epoch = 0
     if resume != '':
-        checkpoint, start_epoch = fileIO.find_checkpoint(resume)
-        model.load_state_dict(checkpoint)
+        model, start_epoch = fileIO.find_checkpoint(resume)
+        model.train()
+        # model.load_state_dict(model)
 
     # Module
     loss_fn = getter.get_loss(run_cfg['train']['loss'])
@@ -76,7 +81,9 @@ def train(resume=''):
 
             loss.backward()
             if step % run_cfg['train']['log_interval_steps'] == 0 or step == len(data_loader):
-                logger.info(f'[Epoch {epoch}/Step {step}] loss: {loss:.6f}, lr: {lr_scheduler.get_last_lr()[0]:.6f}')
+                logger.info('[Epoch {}/Step {}] loss: {:.6f}, lr: {:.6f}'.format(
+                    epoch, step, loss.item(), lr_scheduler.get_last_lr()[0]
+                ))
             optimizer.step()
             lr_scheduler.step()
 
@@ -86,4 +93,8 @@ def train(resume=''):
 
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--resume', type=str, default='', help='Path to experiment_*/')
+    opt = parser.parse_args()
+
+    train(opt.resume)

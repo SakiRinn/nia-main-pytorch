@@ -7,9 +7,8 @@ from torch.utils.data import Dataset
 
 
 class ResDataset(Dataset):
-    def __init__(self):
+    def __init__(self, input_words, output_words):
         super(ResDataset, self).__init__()
-        input_words, output_words = read()
 
         self.input_index_to_word, self.input_vocab_len, self.input_word_to_index = encoding.build_index(input_words)
         self.output_index_to_word, self.output_vocab_len, self.output_word_to_index = encoding.build_index(output_words)
@@ -28,3 +27,6 @@ class ResDataset(Dataset):
 
     def __getitem__(self, idx: int):
         return self.input_words[idx], self.output_words[idx]
+
+    def index_to_word(self):
+        return self.input_index_to_word, self.output_index_to_word
