@@ -12,7 +12,7 @@ train:
   max_saving_checkpoints: 10
 eval:
   loss: CrossEntropyLoss
-  batch_size: 1
+  batch_size: 64
   num_workers: 4
 
 model: Transformer
