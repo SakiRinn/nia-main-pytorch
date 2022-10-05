@@ -2,6 +2,7 @@ import os
 import re
 import glob
 import yaml
+import logging
 import torch
 
 
@@ -34,14 +35,24 @@ def find_checkpoint(exp_dir: str):
     return torch.load(ckpt_dir[0]), epoch
 
 
-def save_checkpoint(dir: str, model, epoch=0):
-    '''Save the checkpoint in new "dir/experiment_*/". '''
-    experiments = glob.glob(os.path.join(dir, 'experiment_*'))
-    if epoch == 0:
-        exp_id = max([int(re.findall(r'\d+', exp)[-1]) for exp in experiments]) + 1 if experiments else 1
-        exp_dir = os.path.join(dir, f"experiment_{exp_id}")
-        os.mkdir(exp_dir)
-    else:
-        exp_id = max([int(re.findall(r'\d+', exp)[-1]) for exp in experiments])
-        exp_dir = os.path.join(dir, f"experiment_{exp_id}")
+def save_checkpoint(dir: str, model, epoch=0, *, exp_id=0):
+    '''Save the checkpoint in "dir/experiment_*/". '''
+    exp_dir = os.path.join(dir, f"experiment_{exp_id}")
     torch.save(model, os.path.join(exp_dir, f'ckpt_{model._get_name()}_{epoch}.pth'))
+
+
+def init_logger(dir):
+    '''Get the logger and the current exp_id and create a new "dir/experiment_*/". '''
+    experiments = glob.glob(os.path.join(dir, 'experiment_*'))
+    exp_id = max([int(re.findall(r'\d+', exp)[-1]) for exp in experiments]) + 1 if experiments else 1
+    exp_dir = os.path.join(dir, f"experiment_{exp_id}")
+    os.mkdir(exp_dir)
+
+    logging.basicConfig(filename=os.path.join(exp_dir, 'train.log'),
+                    level=logging.DEBUG,
+                    format='[%(levelname)s] %(asctime)s: %(message)s',
+                    datefmt='%y-%b-%d %H:%M:%S')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    return logger, exp_id

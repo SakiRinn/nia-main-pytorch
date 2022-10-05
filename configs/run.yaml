@@ -1,9 +1,11 @@
 train:
   optimizer: RMSprop
-  loss: MaskedCELoss
+  loss: CrossEntropyLoss
   batch_size: 64
   epochs: 200
-  lr: 1.0e-4
+  lr:
+    initial: 1.0e-4
+    scheduler: TransformerLR
   saving_interval_epochs: 10
   log_interval_steps: 10
   max_saving_checkpoints: 10

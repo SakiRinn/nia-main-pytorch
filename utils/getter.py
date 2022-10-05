@@ -54,12 +54,12 @@ def get_optimizer(name: str, params, lr, *args, **kwargs):
     raise AttributeError(f'There is no class named {name}.')
 
 
-def get_lr_scheduler(name: str, *args, **kwargs):
+def get_lr_scheduler(name: str, optimizer, *args, **kwargs):
     import modules.optimizer
 
     if hasattr(modules.optimizer, name):
         try:
-            return getattr(modules.optimizer, name)(*args, **kwargs)
+            return getattr(modules.optimizer, name)(optimizer, *args, **kwargs)
         except TypeError:
-            return getattr(modules.optimizer, name)()
+            return getattr(modules.optimizer, name)(optimizer)
     raise AttributeError(f'There is no class named {name}.')
