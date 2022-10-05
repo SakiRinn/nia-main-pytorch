@@ -27,7 +27,6 @@ class ResDataset(Dataset):
         self.input_words = pad_sequence(self.input_words).T.to(torch.long)
         self.output_words = pad_sequence(self.output_words).T.to(torch.long)
 
-
     def __len__(self):
         return min(len(self.input_words), len(self.output_words))
 
