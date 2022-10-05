@@ -176,7 +176,6 @@ class Transformer(nn.Module):
         outs = self.dense(dec_outputs)
         return outs
 
-    def predict(self, src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
-        outs = self(src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None)    # (N, T, output)
+    def pred2index(self, outs):
         preds = outs.argmax(-1).to(torch.long)    # (N, T)
         return preds

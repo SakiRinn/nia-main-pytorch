@@ -48,9 +48,8 @@ def train(resume=''):
     # Resume
     start_epoch = 0
     if resume != '':
-        model, start_epoch = fileIO.find_checkpoint(resume)
-        model.train()
-        # model.load_state_dict(model)
+        state, start_epoch = fileIO.find_checkpoint(resume)
+        model.load_state_dict(state)
 
     # Module
     loss_fn = getter.get_loss(run_cfg['train']['loss'])

@@ -19,8 +19,8 @@ class ResDataset(Dataset):
         self.input_max_len = max([len(sentence) for sentence in self.input_words])
         self.output_max_len = max([len(sentence) for sentence in self.output_words])
 
-        self.input_words = pad_sequence(self.input_words).T.to(torch.long)
-        self.output_words = pad_sequence(self.output_words).T.to(torch.long)
+        self.input_words = pad_sequence(self.input_words).T.to(torch.long)[:10]
+        self.output_words = pad_sequence(self.output_words).T.to(torch.long)[:10]
 
     def __len__(self):
         return min(len(self.input_words), len(self.output_words))
@@ -30,3 +30,6 @@ class ResDataset(Dataset):
 
     def index_to_word(self):
         return self.input_index_to_word, self.output_index_to_word
+
+    def words(self):
+        return self.input_words, self.output_words

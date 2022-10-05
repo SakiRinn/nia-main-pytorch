@@ -107,7 +107,6 @@ class Seq2Seq(nn.Module):
                 out = pred.unsqueeze(1)
         return outs
 
-    def predict(self, src, trg):
-        outs = self(src, trg, teacher_forcing_ratio=0.0)    # (N, T, output)
+    def pred2index(self, outs):
         preds = outs.argmax(-1).to(torch.long)    # (N, T)
         return preds

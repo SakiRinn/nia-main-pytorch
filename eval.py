@@ -5,6 +5,7 @@ import utils.fileIO as fileIO
 import utils.mask as mask
 from modules.loss import MaskedLoss
 
+import os
 from tqdm import tqdm
 import argparse
 
@@ -17,7 +18,7 @@ def eval(ckpt_dir=''):
     model_cfg = fileIO.load_config('./configs/model.yaml')
     run_cfg = fileIO.load_config('./configs/run.yaml')
 
-    logger = fileIO.init_eval(ckpt_dir)
+    logger, eval_dir = fileIO.init_eval(ckpt_dir)
     device = run_cfg['device']
 
     # Dataset
@@ -33,7 +34,6 @@ def eval(ckpt_dir=''):
     model_name = run_cfg['model']
     model_params = model_cfg[model_name]
     if model_name == 'Seq2Seq':
-        teacher_forcing_ratio = model_params['teacher_forcing_ratio']
         del model_params['teacher_forcing_ratio']
     model = getter.get_model(run_cfg['model'],
                              dataset.input_vocab_len,
@@ -42,45 +42,62 @@ def eval(ckpt_dir=''):
     model.eval()
 
     # Load
-    model = torch.load(ckpt_dir)
-    model.eval()
+    state = torch.load(ckpt_dir)
+    model.load_state_dict(state)
 
     # Module
-    # loss_fn = getter.get_loss(run_cfg['eval']['loss'])
-    # if model_name == 'Transformer':
-    #     loss_fn = MaskedLoss(loss_fn)
+    loss_fn = getter.get_loss(run_cfg['eval']['loss'])
+    if model_name == 'Transformer':
+        loss_fn = MaskedLoss(loss_fn)
 
     # Main
     with torch.no_grad():
+        preds = []
+        losses = []
+
         for step, data in enumerate(tqdm(data_loader), start=1):
             src, trg = data[0].to(device), data[1].to(device)
 
-            preds = []
-            losses = []
-            if model_name == 'Transformer':
+            if model_name == 'Seq2Seq':
+                out = model(src, trg, teacher_forcing_ratio=0.0)
+                loss = loss_fn(out, trg).item()
+                pred = model.pred2index(out)
+            elif model_name == 'Transformer':
                 src_key_padding_mask = mask.key_padding_mask(src).to(device)
                 trg_key_padding_mask = mask.key_padding_mask(trg).to(device)
                 attn_mask = mask.square_subsequent_mask(trg.size(1)).to(device)
-                pred = model.predict(src, trg, src_key_padding_mask, trg_key_padding_mask, attn_mask)
-                # loss = loss_fn(pred, trg, trg_key_padding_mask).item()
+                out = model(src, trg, src_key_padding_mask, trg_key_padding_mask, attn_mask)
+                loss = loss_fn(out, trg, trg_key_padding_mask).item()
+                pred = model.pred2index(out)
             else:
-                pred = model.predict(src, trg)
-                # loss = loss_fn(pred, trg).item()
-            # logger.info(f'[Step {step}] loss: {loss}')
-            # losses.append(loss)
+                out = model(src, trg)
+                loss = loss_fn(out, trg).item()
+                pred = model.pred2index(out)
 
-        # loss = torch.tensor(losses).mean().item()
-        # logger.info(f'[RESULT] average loss: {loss}')
+            preds.append(pred)
+            losses.append(loss)
+            logger.info(f'[Step {step}] loss: {loss:.6f}')
 
-        inputs, outputs = [], []
+        loss = torch.tensor(losses).mean().item()
+        preds = torch.cat(preds, dim=0)
+        logger.info(f'[RESULT] average loss: {loss:.6f}')
+
+        inputs, outputs, results = [], [], []
         input_index_to_word, output_index_to_word = dataset.index_to_word()
-        for input_sequence, pred in zip(input_words, preds):
-            entities = ' '.join([input_index_to_word[idx] for idx in input_sequence if idx > 0])
-            sequence = ' '.join([output_index_to_word[idx] for idx in pred if idx > 0])
-            logger.info(entities)
-            logger.info(sequence)
-            inputs.append(entities)
-            outputs.append(sequence)
+        input_words, output_words = dataset.words()
+        for input_text, output_text, result_text in zip(input_words, preds, output_words):
+            entity = ' '.join([input_index_to_word[idx] for idx in input_text if idx > 0])
+            pred_seq = ' '.join([output_index_to_word[idx] for idx in output_text if idx > 0])
+            real_seq = ' '.join([output_index_to_word[idx] for idx in result_text if idx > 0])
+            inputs.append(entity)
+            outputs.append(pred_seq)
+            results.append(real_seq)
+
+        with open(os.path.join(eval_dir, f'[Pred] {ckpt_dir.split("/")[-1]}.txt'), 'w') as f:
+            for input, output, result in zip(inputs, outputs, results):
+                f.write('[ENTITY] ' + input + '\n')
+                f.write('[ PRED ] ' + output + '\n')
+                f.write('[ REAL ] ' + result + '\n\n')
 
 
 if __name__ == '__main__':
