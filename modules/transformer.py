@@ -183,8 +183,8 @@ class Transformer(nn.Module):
     def predict(self, src, sos_idx=0, eos_idx=0, src_key_padding_mask=None, *, max_len=25):
         # src: (1, T)
         out = torch.tensor(sos_idx).expand(1, 1).to(src.device)
-        outs = torch.zeros(1, max_len, self.output_vocab_len)
-        preds = torch.zeros(1, max_len)
+        outs = torch.zeros(1, max_len, self.output_vocab_len).to(src.device)
+        preds = torch.zeros(1, max_len).to(src.device)
 
         enc_outputs = self.encoder(src, src_key_padding_mask)
         for t in range(max_len):
@@ -196,6 +196,4 @@ class Transformer(nn.Module):
             if out.item() == eos_idx:
                 break
 
-        outs = torch.tensor(outs).to(src.device)
-        preds = torch.tensor(preds).to(src.device)
         return outs, preds
