@@ -59,6 +59,7 @@ def eval(ckpt_dir=''):
         preds = []
         losses = []
 
+        print('Evaluating...')
         for step, data in enumerate(tqdm(data_loader), start=1):
             src, trg = data[0].to(device), data[1].to(device)
             trg_in, trg_real = trg[:, 0:-1], trg[:, 1:]
@@ -80,6 +81,7 @@ def eval(ckpt_dir=''):
         preds = torch.cat(preds, dim=0).to(torch.long)
         logger.info(f'[RESULT] average loss: {loss:.6f}')
 
+        print('Generating...')
         inputs, outputs, results = [], [], []
         for input_text, output_text, result_text in zip(input_words, preds, output_words):
             entity = ' '.join([input_index_to_word[idx] for idx in input_text if idx not in [0, input_sos_index, input_eos_index]])
@@ -89,7 +91,7 @@ def eval(ckpt_dir=''):
             outputs.append(pred_seq)
             results.append(real_seq)
 
-        with open(os.path.join(eval_dir, f'[Pred] {ckpt_dir.split("/")[-1]}.txt'), 'w') as f:
+        with open(os.path.join(eval_dir, f'PRED-{ckpt_dir.split("/")[-1]}.txt'), 'w') as f:
             for input, output, result in zip(inputs, outputs, results):
                 f.write('[ENTITY] ' + input + '\n')
                 f.write('[ PRED ] ' + output + '\n')

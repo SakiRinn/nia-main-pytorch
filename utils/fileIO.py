@@ -69,7 +69,7 @@ def init_eval(ckpt_dir):
     if not os.path.exists(eval_dir):
         os.mkdir(eval_dir)
 
-    logging.basicConfig(filename=os.path.join(eval_dir, f'[Eval] {ckpt_name}.log'),
+    logging.basicConfig(filename=os.path.join(eval_dir, f'EVAL-{ckpt_name}.log'),
                         format='[%(levelname)s] %(asctime)s: %(message)s',
                         datefmt='%y-%b-%d %H:%M:%S')
     logger = logging.getLogger()
