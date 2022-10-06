@@ -3,7 +3,6 @@ import utils.fileIO as fileIO
 import utils.mask as mask
 from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
-import datasets
 from datasets import ResDataset
 
 from tqdm import trange

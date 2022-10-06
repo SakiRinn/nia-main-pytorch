@@ -26,12 +26,12 @@ class ResDataset(Dataset):
         split_idx = int(min(len(self._input_words), len(self._output_words)) * validate_split)
         if training:
             # Train set
-            self._input_words = self._input_words[:split_idx]
-            self._output_words = self._output_words[:split_idx]
-        else:
-            # Test set
             self._input_words = self._input_words[split_idx:]
             self._output_words = self._output_words[split_idx:]
+        else:
+            # Test set
+            self._input_words = self._input_words[:split_idx]
+            self._output_words = self._output_words[:split_idx]
 
     def __len__(self):
         return min(len(self._input_words), len(self._output_words))
