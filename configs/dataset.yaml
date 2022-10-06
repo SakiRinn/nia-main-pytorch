@@ -1,8 +1,6 @@
 train_file: './res/dataset.txt'
-test_file:
-  input: './res/test_input.txt'
-  result: './res/test_result.txt'
 size: 5000
+validate_split: 0.2
 vocab_size: 2000
 filters: "!$&*+,-./;<=>?#[\\]^_`{|}~\t\n"
 hours:

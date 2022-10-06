@@ -24,7 +24,7 @@ def train(resume=''):
     lr_scheduler = run_cfg["train"]['lr']['scheduler']
 
     # Dataset
-    input_words, output_words = datasets.read()
+    input_words, output_words = datasets.train_set()
 
     dataset = ResDataset(input_words, output_words)
     data_loader = DataLoader(dataset,

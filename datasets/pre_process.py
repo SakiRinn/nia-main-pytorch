@@ -209,32 +209,16 @@ def read():
     return input_words, output_words
 
 
-def read_test():
-    input_lines = []
-    output_lines = []
-
-    input_words = []
-    output_words = []
-
-    with open(dataset_cfg['test_file']['input'], 'r') as f:
-        input_lines = f.read().split('\n')
-    with open(dataset_cfg['test_file']['result'], 'r') as f:
-        output_lines = f.read().split('\n')
-
-    for input_text, output_text in zip(input_lines, output_lines):
-        if input_text and not input_text.startswith('#'):
-            input_word = text_to_word_sequence(input_text, filters=dataset_cfg['filters'])
-            input_word.insert(0, 'SOS')
-            input_word.append('EOS')
-            input_words.append(input_word)
-        if output_text and not output_text.startswith('#'):
-            output_word = text_to_word_sequence(output_text, filters=dataset_cfg['filters'])
-            output_word.insert(0, 'SOS')
-            output_word.append('EOS')
-            output_words.append(output_word)
+def train_set():
+    input_words, output_words = read()
+    val_idx = dataset_cfg['validate_split'] * dataset_cfg['size']
+    return input_words[:val_idx], output_words[:val_idx]
 
 
-    return input_words, output_words
+def test_set():
+    input_words, output_words = read()
+    val_idx = dataset_cfg['validate_split'] * dataset_cfg['size']
+    return input_words[val_idx:], output_words[val_idx:]
 
 
 def read_split():

@@ -22,7 +22,7 @@ def eval(ckpt_dir=''):
     device = run_cfg['device']
 
     # Dataset
-    input_words, output_words = datasets.read_test()
+    input_words, output_words = datasets.test_set()
     dataset = ResDataset(input_words, output_words)
     data_loader = DataLoader(dataset,
                              batch_size=run_cfg['eval']['batch_size'],
