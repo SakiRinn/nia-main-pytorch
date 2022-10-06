@@ -1,9 +1,9 @@
 train:
-  optimizer: RMSprop
+  optimizer: Adam
   loss: CrossEntropyLoss
   batch_size: 64
   num_workers: 4
-  epochs: 500
+  epochs: 1000
   lr:
     initial: 1.0e-4
     scheduler: TransformerLR

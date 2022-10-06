@@ -5,9 +5,11 @@ from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
 from datasets import ResDataset
 
+import os
 from tqdm import trange
 import argparse
 
+import torch
 from torch.utils.data import DataLoader
 
 
@@ -50,8 +52,13 @@ def train(resume=''):
     loss_fn = getter.get_loss(run_cfg['train']['loss'])
     if model_name == 'Transformer':
         loss_fn = MaskedLoss(loss_fn)
-    optimizer = getter.get_optimizer(run_cfg['train']['optimizer'], model.parameters(), lr)
-    lr_scheduler = getter.get_lr_scheduler(lr_scheduler, optimizer, model_cfg[model_name]['embedding_dim'])
+    if resume == '':
+        optimizer = getter.get_optimizer(run_cfg['train']['optimizer'], model.parameters(), lr)
+        lr_scheduler = getter.get_lr_scheduler(lr_scheduler, optimizer, model_cfg[model_name]['embedding_dim'])
+    else:
+        optimizer = getter.get_optimizer(run_cfg['train']['optimizer'], model.parameters(), lr)
+        optimizer.load_state_dict(os.path.join(resume, 'optim_params.pth'))
+        lr_scheduler = getter.get_lr_scheduler(lr_scheduler, optimizer, model_cfg[model_name]['embedding_dim'], last_epoch=start_epoch)
 
     # Main
     for epoch in trange(start_epoch + 1, end_epoch + 1):
@@ -82,6 +89,7 @@ def train(resume=''):
         # Save
         if epoch % run_cfg['train']['saving_interval_epochs'] == 0:
             fileIO.save_checkpoint(run_cfg['checkpoint_dir'], model, epoch, exp_id=exp_id)
+            torch.save(optimizer.state_dict(), os.path.join(resume, 'optim_params.pth'))
 
 
 if __name__ == "__main__":
