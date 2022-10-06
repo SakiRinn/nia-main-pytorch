@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 
 def eval(ckpt_dir=''):
     # Config
+    dataset_cfg = fileIO.load_config('./configs/dataset.yaml')
     model_cfg = fileIO.load_config('./configs/model.yaml')
     run_cfg = fileIO.load_config('./configs/run.yaml')
 
@@ -22,8 +23,7 @@ def eval(ckpt_dir=''):
     device = run_cfg['device']
 
     # Dataset
-    input_words, output_words = datasets.test_set()
-    dataset = ResDataset(input_words, output_words)
+    dataset = ResDataset(training=False, validate_split=dataset_cfg['validate_split'])
     data_loader = DataLoader(dataset,
                              batch_size=run_cfg['eval']['batch_size'],
                              num_workers=run_cfg['eval']['num_workers'],
@@ -40,8 +40,8 @@ def eval(ckpt_dir=''):
     if model_name == 'Seq2Seq':
         del model_params['teacher_forcing_ratio']
     model = getter.get_model(run_cfg['model'],
-                             dataset.input_vocab_len,
-                             dataset.output_vocab_len - 1,
+                             dataset._input_vocab_len,
+                             dataset._output_vocab_len - 1,
                              **model_params).to(device)
     model.eval()
 

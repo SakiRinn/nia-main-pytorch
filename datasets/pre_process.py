@@ -209,18 +209,6 @@ def read():
     return input_words, output_words
 
 
-def train_set():
-    input_words, output_words = read()
-    val_idx = dataset_cfg['validate_split'] * dataset_cfg['size']
-    return input_words[:val_idx], output_words[:val_idx]
-
-
-def test_set():
-    input_words, output_words = read()
-    val_idx = dataset_cfg['validate_split'] * dataset_cfg['size']
-    return input_words[val_idx:], output_words[val_idx:]
-
-
 def read_split():
     lines = []
 
