@@ -111,7 +111,7 @@ class Seq2Seq(nn.Module):
         # src: (1, T)
         out = torch.tensor(sos_idx).expand(1, 1).to(src.device)
         outs = torch.zeros(1, max_len, self.output_vocab_len).to(src.device)
-        preds = torch.zeros(1, max_len)
+        preds = torch.zeros(1, max_len).to(src.device)
 
         enc_outputs, state = self.encoder(src)
         state = tuple([s[:self.decoder.num_layers] for s in state])
