@@ -87,6 +87,8 @@ class Seq2Seq(nn.Module):
         # Option
         self.teacher_forcing_ratio = teacher_forcing_ratio
 
+        self.apply(self.init_weights)
+
     def forward(self, src, trg):
         # src, trg: (N, T_src), (N, T_trg)
         batch_size = src.size(0)
@@ -127,3 +129,11 @@ class Seq2Seq(nn.Module):
                 break
 
         return outs, preds
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
