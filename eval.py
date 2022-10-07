@@ -7,6 +7,7 @@ from modules.loss import MaskedLoss
 
 import os
 from tqdm import tqdm
+from tqdm.contrib import tzip
 import argparse
 
 import torch
@@ -83,7 +84,7 @@ def eval(ckpt_dir=''):
 
         print('Generating...')
         inputs, outputs, results = [], [], []
-        for input_text, output_text, result_text in zip(input_words, preds, output_words):
+        for input_text, output_text, result_text in tzip(input_words, preds, output_words):
             entity = ' '.join([input_index_to_word[idx] for idx in input_text if idx not in [0, input_sos_index, input_eos_index]])
             pred_seq = ' '.join([output_index_to_word[idx] for idx in output_text if idx not in [0, output_sos_index, output_eos_index]])
             real_seq = ' '.join([output_index_to_word[idx] for idx in result_text if idx not in [0, output_sos_index, output_eos_index]])

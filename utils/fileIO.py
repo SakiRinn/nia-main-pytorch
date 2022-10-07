@@ -37,9 +37,14 @@ def find_checkpoint(exp_dir: str):
     return torch.load(ckpt_dir[0]), epoch
 
 
-def save_checkpoint(dir: str, model: nn.Module, epoch=0, *, exp_id=0):
-    '''Save the checkpoint in "dir/experiment_*/". '''
-    exp_dir = os.path.join(dir, f"experiment_{exp_id}")
+def save_checkpoint(exp_dir: str, model: nn.Module, epoch=0, *, exp_id=0):
+    '''Save the checkpoint in "exp_dir/". '''
+    checkpoints = glob.glob(os.path.join(exp_dir, 'ckpt_*_*.pth'))
+    max_ckpts = load_config('./configs/run.yaml')['train']['max_saving_checkpoints']
+    epochs = sorted([int(re.findall(r'\d+', ckpt)[-1]) for ckpt in checkpoints])
+    while len(epochs) >= max_ckpts:
+        os.remove(os.path.join(exp_dir, f'ckpt_{model._get_name()}_{epochs[0]}.pth'))
+        del epochs[0]
     torch.save(model.state_dict(), os.path.join(exp_dir, f'ckpt_{model._get_name()}_{epoch}.pth'))
     return model.state_dict()
 

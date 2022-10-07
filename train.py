@@ -5,6 +5,7 @@ from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
 from datasets import ResDataset
 
+import os
 from tqdm import trange
 import argparse
 
@@ -18,6 +19,7 @@ def train(resume=''):
     run_cfg = fileIO.load_config('./configs/run.yaml')
 
     logger, exp_id = fileIO.init_train(run_cfg['checkpoint_dir'])
+    exp_dir = os.path.join(run_cfg['checkpoint_dir'], f"experiment_{exp_id}")
     device = run_cfg['device']
     end_epoch = run_cfg['train']['epochs']
     lr = run_cfg['train']['lr']['initial']
@@ -82,7 +84,7 @@ def train(resume=''):
 
         # Save
         if epoch % run_cfg['train']['saving_interval_epochs'] == 0:
-            fileIO.save_checkpoint(run_cfg['checkpoint_dir'], model, epoch, exp_id=exp_id)
+            fileIO.save_checkpoint(exp_dir, model, epoch, exp_id=exp_id)
             logger.info('Saving model successfully.')
 
 
