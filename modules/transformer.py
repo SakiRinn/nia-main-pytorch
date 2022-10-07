@@ -173,6 +173,8 @@ class Transformer(nn.Module):
                                num_layers, num_heads, decoder_dropout, activation)
         self.dense = nn.Linear(embedding_dim, output_vocab_len)
 
+        self.apply(self.init_weights)
+
     def forward(self, src, trg, src_key_padding_mask=None, trg_key_padding_mask=None, attn_mask=None):
         enc_outputs = self.encoder(src, src_key_padding_mask)
         dec_outputs, _, _ = self.decoder(enc_outputs, trg,
@@ -197,3 +199,13 @@ class Transformer(nn.Module):
                 break
 
         return outs, preds
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+        else:
+            nn.init.xavier_normal_(m.weight)
