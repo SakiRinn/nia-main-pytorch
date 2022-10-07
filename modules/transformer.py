@@ -207,5 +207,3 @@ class Transformer(nn.Module):
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.weight, 1)
             nn.init.constant_(m.bias, 0)
-        else:
-            nn.init.xavier_normal_(m.weight)
