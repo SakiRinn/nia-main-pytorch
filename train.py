@@ -5,11 +5,29 @@ from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
 from datasets import ResDataset
 
+import numpy as np
 import os
 from tqdm import trange
 import argparse
 
+import torch
 from torch.utils.data import DataLoader
+
+
+def setup_seed(seed):
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
+    np.random.seed(seed)
+    random.seed(seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.enabled = False
 
 
 def train(resume=''):
@@ -93,4 +111,5 @@ if __name__ == "__main__":
     parser.add_argument('--resume', type=str, default='', help='Path to experiment_*/')
     opt = parser.parse_args()
 
+    setup_seed(3407)
     train(opt.resume)
