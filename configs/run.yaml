@@ -17,4 +17,5 @@ eval:
 
 model: Transformer
 device: cuda
+random_seed: 3407
 checkpoint_dir: './res/weights/'

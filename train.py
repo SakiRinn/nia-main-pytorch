@@ -5,6 +5,7 @@ from modules.optimizer import TransformerLR
 from modules.loss import MaskedLoss
 from datasets import ResDataset
 
+import random
 import numpy as np
 import os
 from tqdm import trange
@@ -42,6 +43,8 @@ def train(resume=''):
     end_epoch = run_cfg['train']['epochs']
     lr = run_cfg['train']['lr']['initial']
     lr_scheduler = run_cfg["train"]['lr']['scheduler']
+
+    setup_seed(run_cfg['random_seed'])
 
     # Dataset
     dataset = ResDataset(training=True, validate_split=dataset_cfg['validate_split'])
@@ -111,5 +114,4 @@ if __name__ == "__main__":
     parser.add_argument('--resume', type=str, default='', help='Path to experiment_*/')
     opt = parser.parse_args()
 
-    setup_seed(3407)
     train(opt.resume)
