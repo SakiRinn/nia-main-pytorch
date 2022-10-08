@@ -50,3 +50,6 @@ class ResDataset(Dataset):
 
     def eos_index(self):
         return self._input_word_to_index['EOS'], self._output_word_to_index['EOS']
+
+    def vocab_len(self):
+        return self._input_vocab_len, self._output_vocab_len
