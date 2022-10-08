@@ -57,9 +57,10 @@ def train(resume=''):
     # Model
     model_name = run_cfg['model']
     model_params = model_cfg[model_name]
+    input_vocab_len, output_vocab_len = dataset.vocab_len()
     model = getter.get_model(run_cfg['model'],
-                             dataset._input_vocab_len,
-                             dataset._output_vocab_len - 1,
+                             input_vocab_len,
+                             output_vocab_len - 1,
                              **model_params).to(device)
     model.train()
 
